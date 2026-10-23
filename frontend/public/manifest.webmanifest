@@ -1,0 +1,2 @@
+{ "name": "DeepOptima AI", "short_name": "DeepOptima", "start_url": "/", "display": "standalone",
+  "background_color": "#f0f0ee", "theme_color": "#EDEDED", "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }] }

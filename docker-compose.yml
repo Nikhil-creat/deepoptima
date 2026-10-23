@@ -1,0 +1,64 @@
+name: deepoptima
+x-backend-env: &benv
+  DATABASE_URL: postgresql+asyncpg://deepoptima:${POSTGRES_PASSWORD:-deepoptima}@postgres:5432/deepoptima
+  REDIS_URL: redis://redis:6379/0
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  QDRANT_URL: http://qdrant:6333
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+  FERNET_KEY: ${FERNET_KEY:?set FERNET_KEY}
+  OTLP_ENDPOINT: http://otel-collector:4317
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: deepoptima, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-deepoptima}", POSTGRES_DB: deepoptima }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U deepoptima"], interval: 5s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minioadmin}", MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minioadmin}" }
+    volumes: [miniodata:/data]
+    ports: ["9001:9001"]
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes: [qdrantdata:/qdrant/storage]
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes: ["./infra/otel/config.yaml:/etc/otel/config.yaml:ro"]
+  api:
+    build: ./backend
+    environment: *benv
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    ports: ["8000:8000"]
+  mcp:
+    build: ./backend
+    command: ["python", "-m", "app.mcp.server"]
+    environment: { API_URL: http://api:8000, MCP_API_TOKEN: "${MCP_API_TOKEN:-}" }
+    depends_on: [api]
+    ports: ["8765:8765"]
+  worker:                     # scale with: docker compose up --scale worker=4
+    build: { context: ./backend, dockerfile: Dockerfile.gpu }
+    environment: *benv
+    volumes: [datasets:/data]
+    depends_on: { redis: { condition: service_healthy }, minio: { condition: service_started } }
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+  frontend:
+    build: ./frontend
+    depends_on: [api]
+    ports: ["3000:80"]
+
+volumes: { pgdata: {}, redisdata: {}, miniodata: {}, qdrantdata: {}, datasets: {} }

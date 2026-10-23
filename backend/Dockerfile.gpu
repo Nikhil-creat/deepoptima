@@ -1,0 +1,7 @@
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /srv
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY app ./app
+CMD ["celery","-A","app.workers.tasks","worker","-Q","gpu","-c","1","--loglevel=INFO"]
