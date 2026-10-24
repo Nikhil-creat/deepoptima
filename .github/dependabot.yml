@@ -1,5 +1,21 @@
 version: 2
 updates:
-  - { package-ecosystem: npm, directory: /frontend, schedule: { interval: weekly } }
-  - { package-ecosystem: pip, directory: /backend, schedule: { interval: weekly } }
-  - { package-ecosystem: github-actions, directory: /, schedule: { interval: weekly } }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+    ignore:                       # major bumps (vite, react, tailwind...) need manual migration
+      - { dependency-name: "*", update-types: ["version-update:semver-major"] }
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+    ignore:
+      - { dependency-name: "*", update-types: ["version-update:semver-major"] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

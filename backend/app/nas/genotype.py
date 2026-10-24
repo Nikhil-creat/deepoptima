@@ -138,11 +138,7 @@ def count_params(m: nn.Module) -> int:
 
 
 # ---------------- search space sampling ----------------
-DEFAULT_SPACE = {
-    "min_blocks": 3, "max_blocks": 10, "channels": [16, 24, 32, 48, 64, 96, 128],
-    "kernels": [3, 5, 7], "blocks": ["conv", "res", "mbconv"],  # add "vit" for hybrid
-    "acts": list(ACTS), "lr": [1e-4, 3e-2], "dropout": [0.0, 0.4], "max_stride_blocks": 3,
-}
+from app.nas.space import DEFAULT_SPACE  # noqa: E402  (plain data; re-exported for existing imports)
 
 
 def random_block(space: dict, stride=1) -> BlockGene:

@@ -1,5 +1,5 @@
 {
-  "name": "deepoptima-ui", "private": true, "version": "6.1.0", "type": "module", "engines": { "node": ">=20" },
+  "name": "deepoptima-ui", "private": true, "version": "7.0.0", "type": "module", "engines": { "node": ">=20" },
   "scripts": { "dev": "vite", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
   "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1", "lucide-react": "^0.441.0" },
   "devDependencies": {

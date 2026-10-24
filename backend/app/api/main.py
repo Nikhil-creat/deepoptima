@@ -17,8 +17,7 @@ from app.config import settings
 from app.db.models import (Base, User, Role, Experiment, SearchSpace, Trial, TrialStatus, ExperimentStatus, WorkerNode)
 from app.db.session import engine, get_db
 from app.security import pwd, make_token, require, current_user, audit
-from app.nas.genotype import DEFAULT_SPACE
-from app.workers.orchestrator import run_experiment
+from app.nas.space import DEFAULT_SPACE
 from app.llm.gateway import LLMGateway
 from app.api.assistant import router as assistant_router
 from app.api.vault import router as vault_router
@@ -85,6 +84,7 @@ async def create_experiment(b: ExperimentIn, bg: BackgroundTasks, db: AsyncSessi
     e = Experiment(owner_id=u.id, search_space_id=ss.id, name=b.name, dataset=b.dataset,
                    population_size=b.population_size, max_generations=b.max_generations)
     db.add(e); await audit(db, u.id, "experiment.create", b.name); await db.commit()
+    from app.workers.orchestrator import run_experiment      # lazy: needs torch/celery (GPU image only)
     bg.add_task(run_experiment, e.id, b.epochs)
     return {"id": str(e.id), "status": "running"}
 

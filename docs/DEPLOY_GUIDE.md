@@ -20,7 +20,7 @@ Note: a key typed into a public static site is visible to that browser only, but
 ```bash
 pkg update && pkg install git unzip -y
 termux-setup-storage
-cd ~ && unzip ~/storage/downloads/deepoptima-master-v6.1.zip && cd deepoptima
+cd ~ && unzip ~/storage/downloads/deepoptima-master-v7.zip && cd deepoptima
 git init -b main
 git config user.name "Nikhil Chary Sriramoju"
 git config user.email "sriramojunikhil66@gmail.com"
@@ -65,9 +65,9 @@ docker compose up --build
 ## 8. Updating an already-deployed site (Termux)
 ```bash
 cd ~
-unzip -o ~/storage/downloads/deepoptima-master-v6.1.zip      # overwrites files, keeps your .git
+unzip -o ~/storage/downloads/deepoptima-master-v7.zip      # overwrites files, keeps your .git
 cd deepoptima
-git add . && git commit -m "v6: colab benchmark, backend connect, mTLS, vault, launch kit"
+git add . && git commit -m "v7: hosted assistant, Telugu, lite API, seed data"
 git push                                                   # token as password if asked
 ```
 Vercel redeploys automatically in ~1 minute. Check the *Deployments* tab; click the latest one -> *Visit*.
@@ -96,3 +96,10 @@ The API still calls `create_all` on startup for quick local runs; use Alembic in
 **Agent RAG:** `make ingest` loads the research notes in `backend/app/agents/papers/` into Qdrant; add your own `.md` files there.
 
 **Social preview:** the site meta tags point to `https://deepoptima.vercel.app/og.png`. If your Vercel URL is different, edit the two `og:image`/`twitter:image` lines in `frontend/index.html`.
+
+## 12. v7 extras
+- **Hosted assistant:** add `GROQ_API_KEY` (optional `GEMINI_API_KEY`) in Vercel -> Settings -> Environment Variables -> Redeploy. The serverless function `frontend/api/chat.js` answers visitors from a built-in knowledge base, auto-detects the best model, rate-limits per visitor and refuses prompt injection. Remove the variable to switch it off.
+- **Lightweight API for free hosting:** `backend/Dockerfile.lite` + `backend/requirements-api.txt` (no torch/celery) + `render.yaml`. CI runs `scripts/check_lite_imports.py` so heavy imports can never sneak back into the API. Full walkthrough: `docs/FINAL_CHECKLIST.md` section E.
+- **Seed data:** `python -m app.scripts.seed --email ... --password ... --demo` creates an admin and a clearly-labelled synthetic experiment.
+- **Telugu:** the తె / EN button (sticky header and footer) switches the page and the assistant language.
+- **Dependabot:** grouped minor/patch updates only; major bumps are ignored (they were the failing preview PRs).

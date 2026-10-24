@@ -1,0 +1,25 @@
+# Render Blueprint: lightweight API (no GPU/torch). Create via Render -> New -> Blueprint -> pick this repo.
+# Needs a free Postgres (e.g. Neon) and free Redis (e.g. Upstash). Training workers run elsewhere (Colab / your GPU box).
+services:
+  - type: web
+    name: deepoptima-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile.lite
+    dockerContext: ./backend
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL        # postgresql+asyncpg://USER:PASS@HOST/DB?ssl=require
+        sync: false
+      - key: REDIS_URL           # rediss://default:PASS@HOST:6379
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FERNET_KEY          # python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+        sync: false
+      - key: CORS_ORIGINS        # https://deepoptima.vercel.app
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

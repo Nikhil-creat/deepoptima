@@ -1,4 +1,8 @@
 # Changelog
+## v7.0
+- Hosted public assistant (`/api/chat`, Vercel serverless, owner's free key, rate-limited, guardrails) with built-in fallback; Telugu UI + assistant language toggle.
+- API now torch-free: `app/nas/space.py`, lazy orchestrator import, `Dockerfile.lite`, `requirements-api.txt`, `render.yaml`, CI import guard; `bcrypt` pinned for passlib compatibility; seed script for admin + synthetic demo data.
+- Dependabot grouped, majors ignored; `docs/FINAL_CHECKLIST.md`.
 ## v6.1
 - Mobile fix: horizontal overflow (code box widened the page and cut the sticky header), global overflow guards, compact sticky nav on phones.
 - Instagram and Facebook links (contact section, footer, JSON-LD), robots.txt + sitemap.xml, keywords meta, noscript fallback, React error boundary.

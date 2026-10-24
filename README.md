@@ -13,8 +13,9 @@ Evolves CNN / ViT designs with NSGA-II (accuracy vs latency vs parameters), trai
 - **Agentic:** LangGraph swarm (tuning, security audit, efficiency) with Qdrant RAG; judge weights feed back into the search.
 - **LLM gateway:** Groq (fast) + Gemini (deep), semantic cache, failover, **models auto-detected** and re-detected when retired.
 - **Security:** JWT RBAC, mutual TLS to the broker, Fernet vault, hash-chained audit log with verification endpoint, rate limiting + lockout, CSP, prompt-injection screening, Wasm fitness sandbox (fuel + memory limited, no imports).
+- **Free hosting path:** Vercel frontend + hosted assistant function, lightweight API on Render (Neon Postgres, Upstash Redis), GPU work on Colab. See `docs/FINAL_CHECKLIST.md`.
 - **MCP server:** external LLM clients can audit trials and start searches.
-- **Dashboard:** Vite + React + TypeScript + Tailwind, simulator mode, real-results mode (Colab session), live backend mode, AI assistant (voice), dark mode.
+- **Dashboard:** Vite + React + TypeScript + Tailwind, simulator mode, real-results mode (Colab session), live backend mode, AI assistant (voice, Telugu/English), dark mode.
 
 ## Quick start
 ```bash
@@ -65,7 +66,7 @@ docs/        architecture, deploy guide, launch kit, requirements
 | _(fill in after running the notebook)_ | | | POP / GENS / EPOCHS / TRAIN_N |
 
 ## Documentation
-[`docs/DEPLOY_GUIDE.md`](docs/DEPLOY_GUIDE.md) · [`docs/LAUNCH_KIT.md`](docs/LAUNCH_KIT.md) · [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`SECURITY.md`](SECURITY.md)
+[`docs/FINAL_CHECKLIST.md`](docs/FINAL_CHECKLIST.md) · [`docs/DEPLOY_GUIDE.md`](docs/DEPLOY_GUIDE.md) · [`docs/LAUNCH_KIT.md`](docs/LAUNCH_KIT.md) · [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`SECURITY.md`](SECURITY.md)
 
 ## Author
 **Nikhil Chary Sriramoju**: B.Tech CSE (2027), Vaagdevi College of Engineering, Telangana, India.
