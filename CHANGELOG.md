@@ -1,4 +1,7 @@
 # Changelog
+## v6.1
+- Mobile fix: horizontal overflow (code box widened the page and cut the sticky header), global overflow guards, compact sticky nav on phones.
+- Instagram and Facebook links (contact section, footer, JSON-LD), robots.txt + sitemap.xml, keywords meta, noscript fallback, React error boundary.
 ## v6.0
 - Colab notebook for a real, equal-budget benchmark (evolution vs random) exporting a session for the dashboard; "Connect your backend" live mode; dark mode; keys default to session-only storage with an opt-in "Remember" toggle.
 - Backend: mTLS wiring (Redis broker, compose override, fixed cert script), Qdrant ingest + offline hash embedder, swarm feedback loop from the orchestrator, Wasm fitness upload + scoring, Fernet vault CRUD, `/audit/verify` hash-chain check, `python-multipart` dependency added (login form needed it).

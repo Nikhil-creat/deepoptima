@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://deepoptima.vercel.app/sitemap.xml

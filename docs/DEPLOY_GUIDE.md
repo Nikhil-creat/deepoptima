@@ -20,7 +20,7 @@ Note: a key typed into a public static site is visible to that browser only, but
 ```bash
 pkg update && pkg install git unzip -y
 termux-setup-storage
-cd ~ && unzip ~/storage/downloads/deepoptima-master-v6.zip && cd deepoptima
+cd ~ && unzip ~/storage/downloads/deepoptima-master-v6.1.zip && cd deepoptima
 git init -b main
 git config user.name "Nikhil Chary Sriramoju"
 git config user.email "sriramojunikhil66@gmail.com"
@@ -65,7 +65,7 @@ docker compose up --build
 ## 8. Updating an already-deployed site (Termux)
 ```bash
 cd ~
-unzip -o ~/storage/downloads/deepoptima-master-v6.zip      # overwrites files, keeps your .git
+unzip -o ~/storage/downloads/deepoptima-master-v6.1.zip      # overwrites files, keeps your .git
 cd deepoptima
 git add . && git commit -m "v6: colab benchmark, backend connect, mTLS, vault, launch kit"
 git push                                                   # token as password if asked

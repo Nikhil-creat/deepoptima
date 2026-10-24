@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight, ArrowUp, Award, Bot, Briefcase, Check, Copy, Cpu, Database, Download, Eye, Gauge, GraduationCap, Github, KeyRound,
   Layers, Linkedin, Lock, Mail, MapPin, MessageCircle, Monitor, Network, Pause, Play, RefreshCw, RotateCcw, Send, Server,
-  Mic, Moon, Share2, ShieldCheck, Sparkles, Sun, Terminal, Upload, Volume2, VolumeX, Workflow, X, Zap,
+  Facebook, Instagram, Mic, Moon, Share2, ShieldCheck, Sparkles, Sun, Terminal, Upload, Volume2, VolumeX, Workflow, X, Zap,
 } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
@@ -34,6 +34,8 @@ const OWNER = {
   repo: 'https://github.com/Nikhil-creat/deepoptima',
   colab: 'https://colab.research.google.com/github/Nikhil-creat/deepoptima/blob/main/notebooks/deepoptima_colab.ipynb',
   linkedin: 'https://in.linkedin.com/in/nikhil-chary-sriramoju-95041b38a',
+  instagram: 'https://www.instagram.com/nikhil__sriramoju',
+  facebook: 'https://www.facebook.com/profile.php?id=100079201124141',
 }
 const EXPERIENCE = [
   { t: 'Machine Learning Engineer Intern', o: 'Yuva Intern (NSDC)', d: 'Aug – Sep 2026' },
@@ -409,7 +411,7 @@ const KB: { k: string[]; a: string }[] = [
   { k: ['roadmap', 'month', 'plan', 'timeline'], a: 'Six months: 1 foundations, 2 worker mesh, 3 NAS core, 4 NSGA-II + ViT, 5 gateway/agents/MCP/Wasm, 6 dashboard, ONNX export and hardening.' },
   { k: ['backend', 'api', 'endpoint', 'fastapi'], a: 'The FastAPI control plane offers auth, experiments, trials, a Pareto endpoint, a live WebSocket stream, worker status, /llm/models and /assistant/chat. See the Backend tab under Stack.' },
   { k: ['who', 'built', 'creator', 'author', 'nikhil', 'developer', 'owner'], a: 'Built by Nikhil Chary Sriramoju, B.Tech CSE (2027) at Vaagdevi College of Engineering, Telangana. ML Engineer Intern at Yuva Intern (NSDC) and Data Analytics Intern at Thiranex. GitHub: Nikhil-creat.' },
-  { k: ['contact', 'hire', 'email', 'reach', 'linkedin', 'github'], a: 'GitHub: github.com/Nikhil-creat · LinkedIn: in.linkedin.com/in/nikhil-chary-sriramoju-95041b38a · Email: sriramojunikhil66@gmail.com.' },
+  { k: ['contact', 'hire', 'email', 'reach', 'linkedin', 'github'], a: 'GitHub: github.com/Nikhil-creat · LinkedIn: in.linkedin.com/in/nikhil-chary-sriramoju-95041b38a · Instagram: @nikhil__sriramoju · Facebook: facebook.com/profile.php?id=100079201124141 · Email: sriramojunikhil66@gmail.com.' },
   { k: ['certif', 'education', 'college', 'intern', 'experience', 'skill'], a: 'Nikhil holds NASSCOM/Skill India (AI-Data Engineering & Cloud Infrastructure Analyst), IBM SkillsBuild (AI Fundamentals) and Reliance Foundation (AI/ML Engineer Foundation) certifications, plus two 2026 internships.' },
   { k: ['random', 'baseline', 'compare', 'convergence', 'better than'], a: 'The "Evolution vs random search" chart gives both strategies the same evaluation budget per generation and plots the best accuracy found so far. It runs on a synthetic fitness landscape, so use the backend for real benchmarks.' },
   { k: ['session', 'save', 'load', 'voice', 'mic', 'speak', 'microphone'], a: 'Save session downloads your search as JSON and Load session restores it. In this assistant, the mic button lets you ask by voice and the speaker icon reads answers aloud (supported browsers).' },
@@ -547,8 +549,8 @@ function ChatBot({ keys, getDet, prefer, ctx, onAction }: { keys: Keys; getDet: 
 function CopyCmd({ text }: { text: string }) {
   const [ok, setOk] = useState(false)
   return (
-    <div className="flex items-start gap-2 rounded-lg bg-gray-900 text-gray-100 px-3 py-2.5">
-      <pre className="flex-1 overflow-x-auto text-[12px] leading-relaxed whitespace-pre">{text}</pre>
+    <div className="flex items-start gap-2 rounded-lg bg-gray-900 text-gray-100 px-3 py-2.5 min-w-0 max-w-full">
+      <pre className="flex-1 min-w-0 overflow-x-auto text-[12px] leading-relaxed whitespace-pre">{text}</pre>
       <button aria-label="Copy commands" className="shrink-0 text-gray-400 hover:text-white p-1" onClick={async () => { try { await navigator.clipboard.writeText(text); setOk(true); window.setTimeout(() => setOk(false), 1500) } catch { /* clipboard blocked */ } }}>
         {ok ? <Check size={14} /> : <Copy size={14} />}
       </button>
@@ -893,15 +895,15 @@ export default function App() {
   const footA = 'block text-[12.5px] text-gray-500 hover:text-gray-900 transition-colors duration-200 mb-2'
 
   return (
-    <div className="bg-[#f0f0ee]">
+    <div className="bg-[#f0f0ee] w-full max-w-[100vw] overflow-x-hidden">
       <a href="#platform" className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:m-2 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 text-[13px]">Skip to content</a>
 
       {/* sticky header (appears after the hero) */}
       <header className={`fixed top-0 inset-x-0 z-40 flex items-center justify-center gap-2 sm:gap-3 px-3 pt-3 transition-all duration-300 ${stuck ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`} aria-hidden={!stuck}>
         <a href="#top" aria-label="Back to top" className="flex items-center justify-center rounded-full w-10 h-10 shrink-0 shadow-sm" style={{ backgroundColor: '#EDEDED' }}><Logo /></a>
-        <nav className="flex items-center gap-3 sm:gap-8 rounded-xl px-4 sm:px-7 py-2.5 shadow-sm overflow-x-auto" style={{ backgroundColor: '#EDEDED' }}>
+        <nav className="flex items-center gap-2.5 sm:gap-8 rounded-xl px-3 sm:px-7 py-2.5 shadow-sm min-w-0 overflow-x-auto" style={{ backgroundColor: '#EDEDED' }}>
           <button onClick={() => setDark(d => !d)} tabIndex={stuck ? 0 : -1} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} className="text-gray-700 hover:text-gray-900 shrink-0">{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
-          {NAV.map(l => <a key={l} tabIndex={stuck ? 0 : -1} href={`#${l.toLowerCase()}`} className="text-[11.5px] sm:text-[14px] font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200">{l}</a>)}
+          {NAV.map(l => <a key={l} tabIndex={stuck ? 0 : -1} href={`#${l.toLowerCase()}`} className={`${l === 'Stack' ? 'hidden sm:inline ' : ''}whitespace-nowrap text-[11px] sm:text-[14px] font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200`}>{l}</a>)}
         </nav>
       </header>
 
@@ -1161,6 +1163,8 @@ export default function App() {
           <div className="flex flex-wrap gap-2 mt-4">
             <a className={btn} href={OWNER.github} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub</a>
             <a className={btn} href={OWNER.linkedin} target="_blank" rel="noopener noreferrer"><Linkedin size={14} />LinkedIn</a>
+            <a className={btn} href={OWNER.instagram} target="_blank" rel="noopener noreferrer"><Instagram size={14} />Instagram</a>
+            <a className={btn} href={OWNER.facebook} target="_blank" rel="noopener noreferrer"><Facebook size={14} />Facebook</a>
             <a className={btn} href={`mailto:${OWNER.email}`}><Mail size={14} />Hire / collaborate</a>
           </div>
         </section>
@@ -1183,6 +1187,8 @@ export default function App() {
             <a className={footA} href={`${OWNER.repo}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer">MIT License</a></div>
           <div><p className={footH}>Connect</p>
             <a className={footA} href={OWNER.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a className={footA} href={OWNER.instagram} target="_blank" rel="noopener noreferrer">Instagram · @nikhil__sriramoju</a>
+            <a className={footA} href={OWNER.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
             <a className={footA} href={OWNER.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
             <a className={footA} href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
             <p className="text-[12.5px] text-gray-500 flex items-center gap-1.5"><MapPin size={12} />{OWNER.location}</p></div>

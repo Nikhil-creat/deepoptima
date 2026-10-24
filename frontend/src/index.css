@@ -15,3 +15,9 @@ html { scroll-behavior: smooth; }
 /* dark mode: invert the whole page, then re-invert media so the video keeps its colours */
 html.dark { filter: invert(0.93) hue-rotate(180deg); background: #f0f0ee; }
 html.dark video { filter: invert(1) hue-rotate(180deg); }
+
+/* never let a wide child widen the page on phones */
+html, body { max-width: 100%; overflow-x: hidden; }
+input, select, textarea, pre, table { max-width: 100%; }
+input, select, textarea { min-width: 0; }
+img, svg, video { max-width: 100%; }
