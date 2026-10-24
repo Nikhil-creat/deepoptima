@@ -16,8 +16,8 @@ def build_swarm(gw: LLMGateway, embed):
 
     async def retrieve(s: S) -> S:
         v = await embed(f"{s['trial'].get('error','')} {json.dumps(s['trial']['genotype'])[:500]}")
-        hits = await qd.search("whitepapers", query_vector=list(map(float, v)), limit=4)
-        return {"context": [h.payload.get("text", "") for h in hits]}
+        res = await qd.query_points("whitepapers", query=list(map(float, v)), limit=4)
+        return {"context": [(h.payload or {}).get("text", "") for h in res.points]}
 
     async def _ask(role: str, s: S, purpose=Purpose.FAST) -> str:
         sys = f"You are the {role} in a neural architecture search system. Reply with concise JSON only."
@@ -43,3 +43,13 @@ def build_swarm(gw: LLMGateway, embed):
     g.set_entry_point("retrieve")
     g.add_edge("retrieve", "hp"); g.add_edge("hp", "sec"); g.add_edge("sec", "eff"); g.add_edge("eff", "judge"); g.add_edge("judge", END)
     return g.compile()
+
+
+async def publish_weights(exp_id: str, weights: list[float], ttl: int = 86400):
+    """Store the judge's operator weights so the orchestrator can blend them into adaptive selection."""
+    import redis.asyncio as aioredis
+    r = aioredis.from_url(settings.redis_url, **settings.redis_kwargs())
+    try:
+        await r.set(f"exp:{exp_id}:opw", json.dumps([float(x) for x in weights]), ex=ttl)
+    finally:
+        await r.close()

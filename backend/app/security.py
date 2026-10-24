@@ -7,6 +7,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.audit_chain import chain_hash
 from app.config import settings
 from app.db.models import AuditLog, Role, User
 from app.db.session import get_db
@@ -41,6 +42,5 @@ async def audit(db: AsyncSession, actor, action: str, resource: str, detail: dic
     """Hash-chained append-only audit entry."""
     last = (await db.execute(select(AuditLog).order_by(AuditLog.id.desc()).limit(1))).scalar_one_or_none()
     prev = last.hash if last else ""
-    payload = json.dumps({"a": str(actor), "act": action, "res": resource, "d": detail or {}, "p": prev}, sort_keys=True)
     db.add(AuditLog(actor_id=actor, action=action, resource=resource, detail=detail or {},
-                    prev_hash=prev, hash=hashlib.sha256(payload.encode()).hexdigest()))
+                    prev_hash=prev, hash=chain_hash(actor, action, resource, detail, prev)))

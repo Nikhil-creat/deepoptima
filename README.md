@@ -1,42 +1,74 @@
+<p align="center"><img src="frontend/public/og.png" alt="DeepOptima AI" width="720"></p>
+
 # DeepOptima AI
-Distributed Neural Architecture Search + hyperparameter tuning mesh. Evolutionary NSGA-II over CNN/ViT block genotypes, Celery GPU workers, Groq+Gemini gateway, MCP server, Wasm fitness sandbox, Next.js + Tremor dashboard.
 
-## Quickstart
+**Autonomous neural architecture search (NAS) and hyperparameter optimisation platform.**
+Evolves CNN / ViT designs with NSGA-II (accuracy vs latency vs parameters), trains them on a distributed GPU worker mesh, and lets an agent swarm (Groq + Gemini) review failures.
+
+> Live demo (in-browser simulator): deploy `frontend/` on Vercel · Real benchmark: run `notebooks/deepoptima_colab.ipynb` on a free T4 GPU.
+
+## Highlights
+- **Search engine:** block-based genotypes (conv, residual, MBConv, ViT), mutation + crossover, NSGA-II, zero-cost proxies, successive halving, adaptive operator selection.
+- **Distributed:** FastAPI control plane, Celery GPU workers with checkpoint recovery and live heartbeats, MinIO artifacts (.pt / ONNX), Postgres metadata, Redis.
+- **Agentic:** LangGraph swarm (tuning, security audit, efficiency) with Qdrant RAG; judge weights feed back into the search.
+- **LLM gateway:** Groq (fast) + Gemini (deep), semantic cache, failover, **models auto-detected** and re-detected when retired.
+- **Security:** JWT RBAC, mutual TLS to the broker, Fernet vault, hash-chained audit log with verification endpoint, rate limiting + lockout, CSP, prompt-injection screening, Wasm fitness sandbox (fuel + memory limited, no imports).
+- **MCP server:** external LLM clients can audit trials and start searches.
+- **Dashboard:** Vite + React + TypeScript + Tailwind, simulator mode, real-results mode (Colab session), live backend mode, AI assistant (voice), dark mode.
+
+## Quick start
 ```bash
-cp .env.example .env     # set JWT_SECRET, FERNET_KEY
-docker compose up --build            # GPU host (NVIDIA Container Toolkit)
-# first registered user becomes admin
-curl -X POST localhost:8000/auth/register -H 'content-type: application/json' -d '{"email":"you@x.com","password":"longpassword1"}'
-# UI: http://localhost:3000 (Vite dev: cd frontend && npm i && npm run dev -> :5173)   API docs: http://localhost:8000/docs   MCP (SSE): :8765
-```
-CPU-only dev: change worker `build.dockerfile` to `Dockerfile` with command `celery -A app.workers.tasks worker -Q gpu`, and remove the `deploy` block.
+# Frontend only (no backend needed)
+cd frontend && npm install && npm run dev        # http://localhost:5173
 
-## Layout
-```
-deepoptima/
-  docker-compose.yml  .env.example
-  docs/ARCHITECTURE.md (Mermaid)  docs/ROADMAP.md (6 months + 3-day MVP)
-  infra/otel/config.yaml  infra/certs/gen_mtls.sh
-  backend/
-    Dockerfile  Dockerfile.gpu  requirements.txt
-    app/config.py  security.py (JWT/RBAC/Fernet/hash-chained audit)
-    app/db/models.py  session.py
-    app/llm/gateway.py            # Groq+Gemini, semantic cache, failover, streaming
-    app/nas/genotype.py  evolution.py   # genotype->PyTorch, mutation, crossover, NSGA-II
-    app/workers/tasks.py  orchestrator.py  # Celery trial + evolution loop
-    app/agents/swarm.py           # LangGraph + Qdrant RAG + judge (RLAIF hook)
-    app/sandbox/wasm_runner.py    # fuel/memory-limited fitness
-    app/mcp/server.py  app/api/main.py
-  frontend/  Vite + React + TS + Tailwind (video hero, in-browser NSGA-II demo, BYOK Groq/Gemini agent, footer)
-  .github/workflows/ci.yml  docs/DEPLOY_GUIDE.md
+# Full stack
+cp .env.example .env                              # set JWT_SECRET, FERNET_KEY
+docker compose up --build                         # API :8000/docs  UI :3000  MCP :8765
+make ingest                                       # load research notes into Qdrant (agent RAG)
+make mtls                                         # optional: mutual TLS to Redis
+
+# Backend tests
+cd backend && pip install -r requirements.txt pytest && pytest -q
 ```
 
-## v3 additions
-Auto-detected Groq/Gemini models (browser + backend, self-healing on retired models), agent roles (tuning / security / efficiency), hardware-target latency + energy estimate, PyTorch code + Pareto CSV export, in-browser guardrail lab, expanded credentials section, pytest suite, LICENSE, SECURITY.md, Dependabot, PWA manifest.
+## Architecture
+```mermaid
+flowchart LR
+  UI[Vite dashboard] -->|REST/WS + JWT| API[FastAPI]
+  EXT[MCP clients] --> MCP[MCP server] --> API
+  API --> PG[(Postgres)]
+  API --> RD[(Redis, mTLS)]
+  RD --> W[GPU workers]
+  W --> S3[(MinIO)]
+  API --> GW[LLM gateway: Groq / Gemini]
+  API --> SW[LangGraph swarm] --> QD[(Qdrant)]
+  SW --> GW
+  API --> WASM[Wasm fitness sandbox]
+```
+More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), roadmap in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## v2 additions
-Security middleware (headers, rate limit, lockout, body cap), LLM guardrails (injection screen, redaction, untrusted wrapping), zero-cost NASWOT proxy + successive halving + carbon estimate, CI with gitleaks/bandit, CSP headers for Vercel/Netlify. Guide: `docs/DEPLOY_GUIDE.md`.
+## Repository layout
+```
+frontend/    Vite + React + TS + Tailwind (App.tsx holds the whole page)
+backend/     FastAPI, NAS engine, workers, agents, MCP, tests, Alembic
+notebooks/   deepoptima_colab.ipynb (real benchmark on a free GPU)
+infra/       OpenTelemetry config, dev mTLS certificate script
+docs/        architecture, deploy guide, launch kit, requirements
+```
 
-## Status (honest)
-Real: models, gateway, genotype/phenotype, NSGA-II, trial worker (checkpoint resume, ONNX export), API, MCP tools, compose.
-Scaffold only: mTLS (certs script exists; wire TLS into Celery broker/API with `ssl_cert_reqs`), RLAIF (judge returns operator weights, not yet fed back into `next_generation`), Qdrant ingestion of whitepapers, worker heartbeat registration, pause polling in orchestrator, Alembic migrations, Wasm module upload endpoint, tests.
+## Evidence and honesty
+- The website dashboard defaults to a **simulated** fitness landscape; it illustrates the method.
+- Real numbers come from the Colab notebook (same engine, real PyTorch training, evolution vs random search at equal budget). Add your own results here:
+
+| Run | Evolution best acc | Random best acc | Settings |
+|---|---|---|---|
+| _(fill in after running the notebook)_ | | | POP / GENS / EPOCHS / TRAIN_N |
+
+## Documentation
+[`docs/DEPLOY_GUIDE.md`](docs/DEPLOY_GUIDE.md) · [`docs/LAUNCH_KIT.md`](docs/LAUNCH_KIT.md) · [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`SECURITY.md`](SECURITY.md)
+
+## Author
+**Nikhil Chary Sriramoju**: B.Tech CSE (2027), Vaagdevi College of Engineering, Telangana, India.
+[GitHub](https://github.com/Nikhil-creat) · [LinkedIn](https://in.linkedin.com/in/nikhil-chary-sriramoju-95041b38a) · sriramojunikhil66@gmail.com
+
+MIT License.

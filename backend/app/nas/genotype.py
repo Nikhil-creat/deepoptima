@@ -29,6 +29,7 @@ class Genotype:
     batch_size: int = 128
     optimizer: str = "adamw"
     dropout: float = 0.1
+    ops: list[str] = field(default_factory=list)   # mutation operators that produced this candidate
 
     def to_dict(self) -> dict:
         return asdict(self)

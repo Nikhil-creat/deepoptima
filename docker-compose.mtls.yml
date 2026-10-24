@@ -1,0 +1,20 @@
+# Mutual TLS between API / workers and the Redis broker.
+#   bash infra/certs/gen_mtls.sh            (creates CA + api, worker-1, redis certs; dev only)
+#   docker compose -f docker-compose.yml -f docker-compose.mtls.yml up --build
+x-mtls: &mtls
+  MTLS_ENABLED: "1"
+  REDIS_URL: rediss://redis:6379/0
+  TLS_CA: /certs/ca/ca.crt
+services:
+  redis:
+    command: ["redis-server", "--port", "0", "--tls-port", "6379", "--tls-cert-file", "/certs/nodes/redis.crt",
+              "--tls-key-file", "/certs/nodes/redis.key", "--tls-ca-cert-file", "/certs/ca/ca.crt", "--tls-auth-clients", "yes", "--appendonly", "yes"]
+    volumes: ["redisdata:/data", "./infra/certs:/certs:ro"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "--tls", "--cacert", "/certs/ca/ca.crt", "--cert", "/certs/nodes/redis.crt", "--key", "/certs/nodes/redis.key", "ping"]
+  api:
+    environment: { <<: *mtls, TLS_CERT: /certs/nodes/api.crt, TLS_KEY: /certs/nodes/api.key }
+    volumes: ["./infra/certs:/certs:ro"]
+  worker:
+    environment: { <<: *mtls, TLS_CERT: /certs/nodes/worker-1.crt, TLS_KEY: /certs/nodes/worker-1.key }
+    volumes: ["datasets:/data", "./infra/certs:/certs:ro"]

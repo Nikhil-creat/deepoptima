@@ -1,9 +1,10 @@
 """Celery GPU worker: trains a phenotype, profiles latency, checkpoints to MinIO, exports ONNX.
 For Ray: wrap run_trial_impl in @ray.remote(num_gpus=1) and dispatch from the orchestrator instead."""
 from __future__ import annotations
-import io, os, socket, time, uuid
+import io, os, socket, threading, time, uuid
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.signals import worker_ready, worker_shutdown
 from minio import Minio
 import redis, json
 import torch, torch.nn as nn, torchvision, torchvision.transforms as T
@@ -13,9 +14,37 @@ from app.nas.genotype import Genotype, build_model, count_params
 celery = Celery("deepoptima", broker=settings.redis_url, backend=settings.redis_url)
 celery.conf.update(task_acks_late=True, worker_prefetch_multiplier=1, task_reject_on_worker_lost=True,
                    task_routes={"app.workers.tasks.run_trial": {"queue": "gpu"}})
-_r = redis.Redis.from_url(settings.redis_url)
+if settings.mtls_enabled:
+    celery.conf.broker_use_ssl = settings.celery_ssl(); celery.conf.redis_backend_use_ssl = settings.celery_ssl()
+_r = redis.Redis.from_url(settings.redis_url, **settings.redis_kwargs())
 _s3 = Minio(settings.minio_endpoint, settings.minio_access_key, settings.minio_secret_key, secure=False)
 
+
+_stop = threading.Event()
+
+def _beat():
+    """Register this node in Redis every 15s (TTL 45s): the API lists live workers from these keys."""
+    host = socket.gethostname()
+    cuda = torch.cuda.is_available()
+    info = {"gpu": torch.cuda.get_device_name(0) if cuda else "cpu",
+            "gpu_mem_mb": int(torch.cuda.get_device_properties(0).total_memory / 1e6) if cuda else 0,
+            "torch": torch.__version__, "queue": "gpu"}
+    while not _stop.is_set():
+        try:
+            _r.hset(f"worker:{host}", mapping={**info, "last_heartbeat": int(time.time())}); _r.expire(f"worker:{host}", 45)
+        except Exception:
+            pass
+        _stop.wait(15)
+
+@worker_ready.connect
+def _on_ready(**_):
+    threading.Thread(target=_beat, daemon=True).start()
+
+@worker_shutdown.connect
+def _on_shutdown(**_):
+    _stop.set()
+    try: _r.delete(f"worker:{socket.gethostname()}")
+    except Exception: pass
 
 def _publish(exp_id: str, trial_id: str, event: dict):
     _r.publish(f"exp:{exp_id}", json.dumps({"trial_id": trial_id, **event}))

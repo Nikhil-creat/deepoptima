@@ -20,7 +20,7 @@ Note: a key typed into a public static site is visible to that browser only, but
 ```bash
 pkg update && pkg install git unzip -y
 termux-setup-storage
-cd ~ && unzip ~/storage/downloads/deepoptima-master-v3.zip && cd deepoptima
+cd ~ && unzip ~/storage/downloads/deepoptima-master-v6.zip && cd deepoptima
 git init -b main
 git config user.name "Nikhil Chary Sriramoju"
 git config user.email "sriramojunikhil66@gmail.com"
@@ -61,3 +61,38 @@ docker compose up --build
 | "invalid key" under the key box | Re-copy the key; Gemini keys start `AIza`, Groq keys `gsk_` |
 | 429 from Groq/Gemini | Free-tier rate limit: wait a minute or switch the *Prefer* engine |
 | Blank video | Some mobile browsers block autoplay in data-saver mode; the page still works |
+
+## 8. Updating an already-deployed site (Termux)
+```bash
+cd ~
+unzip -o ~/storage/downloads/deepoptima-master-v6.zip      # overwrites files, keeps your .git
+cd deepoptima
+git add . && git commit -m "v6: colab benchmark, backend connect, mTLS, vault, launch kit"
+git push                                                   # token as password if asked
+```
+Vercel redeploys automatically in ~1 minute. Check the *Deployments* tab; click the latest one -> *Visit*.
+
+## 9. Database migrations (backend)
+```bash
+cd backend
+alembic revision --autogenerate -m "init"
+alembic upgrade head
+```
+The API still calls `create_all` on startup for quick local runs; use Alembic in production.
+
+## 10. Vercel tips
+- *Deployments* tab: every push is a deployment; a bad one can be reverted with **Instant Rollback** (three-dot menu on an older deployment -> *Promote to Production*).
+- Pull requests / non-main branches get their own preview URL.
+- *Settings -> Domains* to attach a custom domain.
+- *Settings -> Git*: keep Production Branch = `main`.
+
+## 11. v6 extras
+**Colab real benchmark:** after pushing, open `https://colab.research.google.com/github/Nikhil-creat/deepoptima/blob/main/notebooks/deepoptima_colab.ipynb` (or the *Real benchmark (Colab)* button on the site), set Runtime to T4 GPU, Run all, download `deepoptima-results.zip`, and in the dashboard use **Load session** with `session.json`.
+
+**Connect backend mode:** run the API somewhere reachable over HTTPS (or `http://localhost:8000` on your PC), set `CORS_ORIGINS=https://<your-vercel-site>` in `.env`, register at `/docs`, then enter URL + login in *Connect your backend*. Security note: v6 relaxes the site's `connect-src` CSP to any `https:` host so you can enter your own API URL; to lock it down again, replace `https:` with your API origin in `frontend/vercel.json` and `frontend/netlify.toml`.
+
+**mTLS (dev):** `make mtls`, which generates a CA, creates certs for api/worker/redis and starts the stack with `docker-compose.mtls.yml` (Redis requires client certificates).
+
+**Agent RAG:** `make ingest` loads the research notes in `backend/app/agents/papers/` into Qdrant; add your own `.md` files there.
+
+**Social preview:** the site meta tags point to `https://deepoptima.vercel.app/og.png`. If your Vercel URL is different, edit the two `og:image`/`twitter:image` lines in `frontend/index.html`.

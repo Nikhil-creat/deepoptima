@@ -41,10 +41,10 @@ OPS = [_mut_add, _mut_remove, _mut_type, _mut_width, _mut_kernel, _mut_act, _mut
 
 def mutate(g: Genotype, space: dict = DEFAULT_SPACE, rate: float = 0.5, weights: Sequence[float] | None = None) -> Genotype:
     """`weights` lets the agent swarm bias operator choice (meta-optimisation of search heuristics)."""
-    child = g.clone()
+    child = g.clone(); child.ops = []
     n_ops = 1 + (random.random() < rate) + (random.random() < rate * 0.5)
     for op in random.choices(OPS, weights=weights, k=n_ops):
-        op(child, space)
+        op(child, space); child.ops.append(op.__name__.removeprefix('_mut_'))
     # keep stride schedule sane: at most max_stride_blocks downsamples
     seen = 0
     for b in child.blocks:

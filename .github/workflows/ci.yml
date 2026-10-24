@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: python -m compileall -q backend/app
+      - run: python -c "import json;json.load(open('notebooks/deepoptima_colab.ipynb'))"
       - run: pip install -r backend/requirements.txt pytest && cd backend && pytest -q
       - run: pip install bandit && bandit -q -r backend/app -ll || true
   secrets-scan:
