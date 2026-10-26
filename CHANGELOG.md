@@ -1,4 +1,8 @@
 # Changelog
+## v8.0: DeepOptima Studio (real product)
+- New full-stack public app: accounts, datasets, experiments, results, predictions, share links, admin, privacy/terms/help pages (React + FastAPI + scikit-learn engine, SQLite/Postgres).
+- Engine: CSV profiling, NSGA-II search over six model families (score vs latency vs size), held-out test scoring, baseline, importance, joblib models, generated predict.py.
+- Landing page reworked around Studio; GPU mesh kept as the research track. Single-container Docker, Render blueprint, compose file, CI job for Studio, docs/STUDIO_DEPLOY.md.
 ## v7.0
 - Hosted public assistant (`/api/chat`, Vercel serverless, owner's free key, rate-limited, guardrails) with built-in fallback; Telugu UI + assistant language toggle.
 - API now torch-free: `app/nas/space.py`, lazy orchestrator import, `Dockerfile.lite`, `requirements-api.txt`, `render.yaml`, CI import guard; `bcrypt` pinned for passlib compatibility; seed script for admin + synthetic demo data.

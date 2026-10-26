@@ -1,0 +1,19 @@
+# Full DeepOptima Studio locally with Postgres:   JWT_SECRET=$(openssl rand -hex 32) docker compose -f docker-compose.studio.yml up --build
+# Open http://localhost:8000
+name: deepoptima-studio
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: studio, POSTGRES_PASSWORD: studio, POSTGRES_DB: studio }
+    volumes: [studiodb:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U studio"], interval: 5s, retries: 10 }
+  studio:
+    build: { context: ., dockerfile: Dockerfile.studio }
+    environment:
+      ENV: production
+      DATABASE_URL: postgresql://studio:studio@db:5432/studio
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (openssl rand -hex 32)}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8000:8000"]
+volumes: { studiodb: {} }

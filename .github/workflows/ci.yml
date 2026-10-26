@@ -20,7 +20,7 @@ jobs:
       - run: python -m compileall -q backend/app
       - run: python scripts/check_lite_imports.py
       - run: python -c "import json;json.load(open('notebooks/deepoptima_colab.ipynb'))"
-      - run: pip install -r backend/requirements.txt pytest && cd backend && pytest -q
+      - run: pip install -r backend/requirements.txt pytest && cd backend && pytest -q --ignore-glob='tests/test_studio_*'
       - run: pip install bandit && bandit -q -r backend/app -ll || true
   secrets-scan:
     runs-on: ubuntu-latest
@@ -29,3 +29,11 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+  studio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r backend/requirements-studio.txt pytest httpx anyio
+      - run: cd backend && pytest -q tests/test_studio_engine.py tests/test_studio_core.py tests/test_studio_api.py

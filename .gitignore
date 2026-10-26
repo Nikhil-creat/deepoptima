@@ -1,2 +1,6 @@
 infra/certs/ca/
 infra/certs/nodes/
+studio.db
+*.db
+__pycache__/
+.pytest_cache/

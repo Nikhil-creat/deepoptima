@@ -1,25 +1,31 @@
-# Render Blueprint: lightweight API (no GPU/torch). Create via Render -> New -> Blueprint -> pick this repo.
-# Needs a free Postgres (e.g. Neon) and free Redis (e.g. Upstash). Training workers run elsewhere (Colab / your GPU box).
+# Render Blueprint: DeepOptima Studio as ONE service (React frontend + FastAPI + CPU AutoML) from Dockerfile.studio.
+# Render -> New -> Blueprint -> pick this repo. Needs a free Postgres (Neon) because Render's free disk is ephemeral.
 services:
   - type: web
-    name: deepoptima-api
+    name: deepoptima-studio
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile.lite
-    dockerContext: ./backend
-    healthCheckPath: /healthz
+    dockerfilePath: ./Dockerfile.studio
+    dockerContext: .
+    healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL        # postgresql+asyncpg://USER:PASS@HOST/DB?ssl=require
-        sync: false
-      - key: REDIS_URL           # rediss://default:PASS@HOST:6379
+      - key: ENV
+        value: production
+      - key: DATABASE_URL        # Neon connection string (postgres://...?sslmode=require is fine)
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: FERNET_KEY          # python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+      - key: ADMIN_EMAILS        # your email: the account you register with becomes admin
         sync: false
-      - key: CORS_ORIGINS        # https://deepoptima.vercel.app
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
+      - key: TRUST_PROXY
+        value: "true"
+      - key: CORS_ORIGINS        # only needed if the frontend is hosted elsewhere (e.g. https://deepoptima.vercel.app)
+        value: ""
+      - key: MAX_UPLOAD_MB       # sized for the 512 MB free instance; raise on bigger plans
+        value: "3"
+      - key: MAX_ROWS
+        value: "20000"
+      - key: MAX_TIME_LIMIT_S
+        value: "180"
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"

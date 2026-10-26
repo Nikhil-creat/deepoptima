@@ -1,0 +1,12 @@
+# DeepOptima Studio (CPU AutoML web app): API + job runner. No torch / GPU needed.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.19
+asyncpg>=0.29
+python-multipart>=0.0.9
+scikit-learn>=1.4
+pandas>=2.1
+numpy>=1.26
+joblib>=1.3

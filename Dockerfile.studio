@@ -1,0 +1,21 @@
+# One container: React frontend (built) + FastAPI API + CPU AutoML engine.   docker build -f Dockerfile.studio -t deepoptima-studio .
+FROM node:20-alpine AS web
+WORKDIR /web
+COPY frontend/package.json ./
+RUN npm install
+COPY frontend/ ./
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 ENV=production STATIC_DIR=/srv/web
+WORKDIR /srv
+COPY backend/requirements-studio.txt .
+RUN pip install -r requirements-studio.txt
+COPY backend/app ./app
+COPY --from=web /web/dist ./web
+RUN useradd -m app && chown -R app /srv
+USER app
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn app.studio.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
