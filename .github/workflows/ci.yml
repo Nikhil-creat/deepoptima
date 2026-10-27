@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.11" }
       - run: python -m compileall -q backend/app
       - run: python scripts/check_lite_imports.py
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: pip install -r backend/requirements-studio.txt pytest httpx anyio
       - run: cd backend && pytest -q tests/test_studio_engine.py tests/test_studio_core.py tests/test_studio_api.py
