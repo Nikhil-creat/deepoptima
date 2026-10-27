@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 export type Route =
   | { name: 'landing' } | { name: 'login' } | { name: 'register' } | { name: 'app' } | { name: 'datasets' } | { name: 'dataset'; id: number }
-  | { name: 'new'; dataset?: number } | { name: 'experiment'; id: number } | { name: 'account' } | { name: 'share'; token: string }
+  | { name: 'new'; dataset?: number; clone?: number } | { name: 'forgot' } | { name: 'reset'; token: string } | { name: 'verify'; token: string } | { name: 'experiment'; id: number } | { name: 'account' } | { name: 'share'; token: string }
   | { name: 'privacy' } | { name: 'terms' } | { name: 'help' } | { name: 'admin' } | { name: 'notfound' }
 
 export function parseRoute(hash: string): Route {
@@ -17,7 +17,10 @@ export function parseRoute(hash: string): Route {
     case 'register': return { name: 'register' }
     case 'app': return { name: 'app' }
     case 'datasets': return p[1] ? (num(p[1]) ? { name: 'dataset', id: num(p[1]) } : { name: 'notfound' }) : { name: 'datasets' }
-    case 'new': return { name: 'new', dataset: num(q.get('dataset') ?? '') || undefined }
+    case 'new': return { name: 'new', dataset: num(q.get('dataset') ?? '') || undefined, clone: num(q.get('clone') ?? '') || undefined }
+    case 'forgot': return { name: 'forgot' }
+    case 'reset': return { name: 'reset', token: q.get('token') ?? '' }
+    case 'verify': return { name: 'verify', token: q.get('token') ?? '' }
     case 'experiments': return num(p[1]) ? { name: 'experiment', id: num(p[1]) } : { name: 'app' }
     case 'account': return { name: 'account' }
     case 'share': return p[1] ? { name: 'share', token: p[1] } : { name: 'notfound' }

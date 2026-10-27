@@ -11,7 +11,9 @@ Built by [Nikhil Chary Sriramoju](https://github.com/Nikhil-creat). MIT license.
 2. **Upload a CSV** (checked and profiled: column types, missing values, ID-like columns, warnings).
 3. **Create an experiment**: target column, problem type (auto), scoring metric, model families (linear, tree, random forest, gradient boosting, neural network with architecture search, kNN), search budget, held-out test share, seed.
 4. **Watch it run** in the background (progress, live chart of score vs speed vs size, cancel anytime).
-5. **Use the results**: best models with *Most accurate / Fastest / Smallest* tags, baseline comparison, feature importance, download `model.joblib` + `predict.py`, predict one row or a whole CSV, share a read-only link.
+5. **Use the results**: best models with *Most accurate / Fastest / Smallest* tags, 95% confidence ranges, baseline comparison, confusion matrix or error chart, feature importance, a downloadable report, `model.joblib` + `predict.py`, predictions for one row or a whole CSV, personal **API keys** to call the model from your own app, and a read-only share link.
+6. **Stay in control**: choose which columns to use, re-run any experiment with tweaked settings, download your data, export everything, delete your account. Email verification and password reset work once you add a free Brevo key.
+7. **Run it as a site owner**: admin dashboard with user management, rate limits, quotas, optional closed sign-ups, automatic DB upgrades.
 
 ## Quick start
 ```bash

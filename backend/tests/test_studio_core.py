@@ -48,3 +48,27 @@ def test_db_url_normalisation():
 
 def test_csv_formula_injection_neutralised():
     assert csv_safe("=1+1") == "'=1+1" and csv_safe("@SUM(A1)") == "'@SUM(A1)" and csv_safe("hello") == "hello" and csv_safe(3) == 3
+
+
+def test_purpose_tokens_and_api_keys():
+    t = sec.purpose_token("reset", 7, "s", 3600, f=sec.fingerprint("pw-hash"))
+    body = sec.read_purpose(t, "reset", "s")
+    assert body["sub"] == "7" and body["f"] == sec.fingerprint("pw-hash")
+    assert sec.read_purpose(t, "verify", "s") is None            # wrong purpose
+    assert sec.read_purpose(sec.purpose_token("reset", 7, "s", -5), "reset", "s") is None   # expired
+    key, prefix, h = sec.new_api_key()
+    assert key.startswith("dok_") and key.startswith(prefix) and h == sec.hash_key(key) and len(h) == 64
+
+
+def test_mailer_console_provider(monkeypatch=None):
+    from app.studio import mailer
+    from app.studio.settings import settings
+    old = settings.email_provider
+    settings.email_provider = "console"
+    try:
+        assert mailer.enabled() and mailer.send_email("a@b.co", "hi", "link https://x.y/#/reset?token=abc")
+        assert mailer.OUTBOX[-1]["to"] == "a@b.co"
+        settings.email_provider = ""
+        assert not mailer.enabled() and not mailer.send_email("a@b.co", "hi", "x")
+    finally:
+        settings.email_provider = old

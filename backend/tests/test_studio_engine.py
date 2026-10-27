@@ -125,3 +125,46 @@ def test_pareto_and_space():
 def test_codegen_compiles():
     s = codegen.predict_script("t", "RF", [{"name": "a", "kind": "numeric"}, {"name": "b", "kind": "categorical"}], "1.8.0", "classification")
     compile(s, "predict.py", "exec")
+
+
+def test_small_data_uses_cv_and_reports_ci_and_diagnostics():
+    df = profile.read_csv(wine_csv(), 50000, 100)
+    ev = run(df, "target", "classification", "accuracy")
+    assert ev[0]["cv"] is True and any("3 folds" in n for n in ev[0]["notes"])
+    final = ev[-1]
+    for m in final["models"]:
+        assert m["ci_low"] is not None and m["ci_low"] <= m["ci_high"] <= 1.0
+    d = final["diagnostics"]
+    assert d["kind"] == "confusion" and len(d["labels"]) == 3 and sum(map(sum, d["matrix"])) == ev[0]["n_test"]
+
+
+def test_regression_diagnostics():
+    d = load_diabetes(as_frame=True)
+    df = profile.read_csv(d.frame.to_csv(index=False).encode(), 50000, 100)
+    final = run(df, "target", "regression", "r2")[-1]
+    g = final["diagnostics"]
+    assert g["kind"] == "regression" and 0 < len(g["scatter"]) <= 200 and g["rmse"] >= g["mae"] > 0
+
+
+def test_large_data_uses_single_split():
+    rs = np.random.RandomState(0)
+    X = rs.rand(2200, 4)
+    df = pd.DataFrame(X, columns=list("abcd")); df["y"] = np.where(X[:, 0] + X[:, 1] > 1, "hi", "lo")
+    df = profile.read_csv(df.to_csv(index=False).encode(), 50000, 100)
+    p = profile.profile_frame(df)
+    feats = [c for c in p["columns"] if c["name"] != "y"]
+    cfg = dict(task="classification", metric="accuracy", families=["tree", "linear"], generations=1, population=4, time_limit_s=30, test_size=0.2, seed=3)
+    ev = list(search.search_iter(df, "y", feats, cfg))
+    assert ev[0]["cv"] is False and ev[-1]["type"] == "final"
+    assert max(m["test_score"] for m in ev[-1]["models"]) > 0.9
+
+
+def test_class_balancing_option():
+    rng = random.Random(0)
+    seen = {space.sample("rf", rng)["params"]["balanced"] for _ in range(40)}
+    assert seen == {True, False}
+    g = {"family": "tree", "params": {"max_depth": 3, "min_samples_leaf": 2, "balanced": True}}
+    assert space.make_estimator(g, "classification", 1, 100).get_params()["class_weight"] == "balanced"
+    assert "class_weight" not in space.make_estimator(g, "regression", 1, 100).get_params()
+    g2 = {"family": "linear", "params": {"reg_log10": 0.0, "balanced": True}}
+    assert space.make_estimator(g2, "regression", 1, 100).__class__.__name__ == "Ridge"      # regression ignores it

@@ -1,3 +1,4 @@
+from . import mailer, runner
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -5,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import VERSION
 from .db import Dataset, Experiment, Feedback, Trial, User, get_db, iso
 from .deps import admin_user, check_rate, count, limits_out, trial_out
+from .settings import settings
 from .security import clean_email
 
 router = APIRouter(prefix="/api")
@@ -18,7 +20,8 @@ async def health():
 @router.get("/config")
 async def config():
     import pandas, sklearn
-    return {"version": VERSION, "limits": limits_out(), "versions": {"scikit_learn": sklearn.__version__, "pandas": pandas.__version__}}
+    return {"version": VERSION, "limits": limits_out(), "email_enabled": mailer.enabled(), "require_verification": settings.require_verification,
+            "versions": {"scikit_learn": sklearn.__version__, "pandas": pandas.__version__}}
 
 
 class FeedbackIn(BaseModel):
@@ -57,3 +60,32 @@ async def admin_overview(u: User = Depends(admin_user), db: AsyncSession = Depen
     return {"users": await count(db, User), "datasets": await count(db, Dataset), "experiments": by_status,
             "recent_failures": [{"id": i, "message": m, "at": iso(t)} for i, m, t in failures],
             "recent_feedback": [{"id": f.id, "email": f.email, "message": f.message, "at": iso(f.created_at)} for f in fb]}
+
+
+@router.get("/admin/users")
+async def admin_users(u: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
+    users = (await db.execute(select(User).order_by(User.id.desc()).limit(200))).scalars().all()
+    ds = {o: c for o, c in (await db.execute(select(Dataset.owner_id, func.count()).group_by(Dataset.owner_id))).all()}
+    ex = {o: c for o, c in (await db.execute(select(Experiment.owner_id, func.count()).group_by(Experiment.owner_id))).all()}
+    return {"users": [{"id": x.id, "email": x.email, "name": x.name, "is_admin": x.is_admin, "is_active": x.is_active, "email_verified": x.email_verified,
+                       "created_at": iso(x.created_at), "last_login_at": iso(x.last_login_at), "datasets": ds.get(x.id, 0), "experiments": ex.get(x.id, 0)} for x in users]}
+
+
+class ActiveIn(BaseModel):
+    active: bool
+
+
+@router.post("/admin/users/{uid}/active")
+async def admin_set_active(uid: int, b: ActiveIn, u: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
+    t = await db.get(User, uid)
+    if not t:
+        raise HTTPException(404, "User not found.")
+    if t.id == u.id or t.is_admin:
+        raise HTTPException(400, "Admin accounts cannot be deactivated here.")
+    t.is_active = b.active
+    t.token_version += 1                     # signs the user out everywhere
+    if not b.active:
+        for e in (await db.execute(select(Experiment).where(Experiment.owner_id == t.id, Experiment.status.in_(("queued", "running"))))).scalars():
+            runner.request_cancel(e.id)
+    await db.commit()
+    return {"ok": True, "is_active": t.is_active}

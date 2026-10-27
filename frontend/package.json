@@ -1,6 +1,6 @@
 {
-  "name": "deepoptima-ui", "private": true, "version": "8.0.0", "type": "module", "engines": { "node": ">=20" },
-  "scripts": { "dev": "vite", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
+  "name": "deepoptima-ui", "private": true, "version": "9.0.0", "type": "module", "engines": { "node": ">=20" },
+  "scripts": { "dev": "vite", "build": "vite build", "typecheck": "tsc --noEmit", "preview": "vite preview" },
   "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1", "lucide-react": "^0.441.0" },
   "devDependencies": {
     "@types/react": "^18.3.5", "@types/react-dom": "^18.3.0", "@vitejs/plugin-react": "^4.3.1",

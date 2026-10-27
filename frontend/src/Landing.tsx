@@ -387,7 +387,7 @@ function DefenseRings() {
 /* Assistant knowledge base (works offline; LLM answers are grounded)   */
 /* ------------------------------------------------------------------ */
 const KB: { k: string[]; a: string }[] = [
-  { k: ['studio', 'upload', 'csv', 'spreadsheet', 'predict', 'automl', 'sign up', 'register', 'free plan', 'account'], a: 'DeepOptima Studio is the free web app: create an account, upload a CSV, choose the column to predict, and it searches many models for you. You get test scores vs a baseline, the best accuracy/speed/size trade-offs, feature importance, model download with predict.py, and online predictions.' },
+  { k: ['studio', 'upload', 'csv', 'spreadsheet', 'predict', 'automl', 'sign up', 'register', 'free plan', 'account'], a: 'DeepOptima Studio is the free web app: create an account, upload a CSV, choose the column to predict, and it searches many models for you. You get test scores (with confidence ranges) vs a baseline, the best accuracy/speed/size trade-offs, feature importance, a confusion matrix or error chart, a downloadable report, model download with predict.py, online predictions, and API keys for your own apps. Passwords can be reset by email.' },
   { k: ['privacy', 'my data', 'delete', 'private', 'terms', 'safe data'], a: 'Your files are private to your account, are used only to train your models, and are never sold. You can delete datasets or your whole account any time. Please avoid uploading sensitive personal data. See Privacy and Terms in the footer.' },
   { k: ['limit', 'how big', 'max rows', 'file size'], a: 'Free plan: CSV files of a few MB (about 50,000 rows and 100 columns), a handful of datasets and experiments, one experiment at a time with a time limit. Exact numbers are on your Overview page.' },
   { k: ['what is', 'deepoptima', 'about', 'overview', 'project'], a: 'DeepOptima AI is an autonomous Neural Architecture Search (NAS) and hyperparameter-tuning platform. It evolves CNN and Vision-Transformer designs with NSGA-II across a distributed GPU worker mesh, and an agent swarm (Groq + Gemini) reviews failed trials.' },
@@ -1013,7 +1013,7 @@ export default function Landing() {
           <div className="grid gap-3 lg:grid-cols-2 mt-3">
             <div className={card}>
               <h3 className="text-[14px] font-medium text-gray-900 mb-2">What you get</h3>
-              <ul className="space-y-1.5 text-[13px] text-gray-600">{['Scores on rows the models never saw, compared with a simple baseline', 'A short list of best trade-offs between accuracy, prediction speed and file size', 'Which columns mattered most', 'Download model.joblib and predict.py, or predict one row / a whole CSV online', 'A private read-only link to share results (optional)'].map(x => <li key={x} className="flex gap-2"><span className="text-blue-500">▸</span>{x}</li>)}</ul>
+              <ul className="space-y-1.5 text-[13px] text-gray-600">{['Scores on rows the models never saw, compared with a simple baseline', 'A short list of best trade-offs between accuracy, prediction speed and file size', 'Which columns mattered most', 'Download model.joblib and predict.py, or predict one row / a whole CSV online', '95% confidence ranges, a confusion matrix (or error chart) and a downloadable report', 'Personal API keys to call your model from your own app', 'A private read-only link to share results (optional)'].map(x => <li key={x} className="flex gap-2"><span className="text-blue-500">▸</span>{x}</li>)}</ul>
             </div>
             <div className={card}>
               <h3 className="text-[14px] font-medium text-gray-900 mb-2">Made for</h3>
@@ -1280,7 +1280,7 @@ export default function Landing() {
             <p className="text-[12.5px] text-gray-500 flex items-center gap-1.5"><MapPin size={12} />{OWNER.location}</p></div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-10 pt-5 border-t border-gray-300">
-          <p className="text-[12px] text-gray-400">© {new Date().getFullYear()} {OWNER.name}. Designed &amp; engineered by Nikhil Chary Sriramoju · MIT License · v8.0</p>
+          <p className="text-[12px] text-gray-400">© {new Date().getFullYear()} {OWNER.name}. Designed &amp; engineered by Nikhil Chary Sriramoju · MIT License · v9.0</p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-[11.5px] text-gray-400"><Cpu size={12} />Vite · React · FastAPI · PyTorch</span>
             <button onClick={() => setLang(l => (l === 'en' ? 'te' : 'en'))} aria-label="Change language" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue-500 hover:text-blue-600">{lang === 'en' ? 'తెలుగు' : 'English'}</button>

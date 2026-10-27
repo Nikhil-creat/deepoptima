@@ -81,3 +81,49 @@ export function ProgressBar({ value, tone = 'blue' }: { value: number; tone?: 'b
   const c = { blue: 'bg-blue-500', green: 'bg-green-500', red: 'bg-red-400' }[tone]
   return <div className="h-2.5 rounded-full bg-white overflow-hidden" role="progressbar" aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}><div className={`h-full ${c} transition-all duration-500`} style={{ width: `${Math.max(2, Math.min(100, value))}%` }} /></div>
 }
+
+/** Rows = what was true, columns = what the model said. Green diagonal = correct. */
+export function ConfusionMatrix({ labels, matrix }: { labels: string[]; matrix: number[][] }) {
+  const totals = matrix.map(r => r.reduce((a, b) => a + b, 0))
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-[12px] border-separate border-spacing-1">
+        <thead><tr><th />{labels.map(l => <th key={l} className="px-2 font-medium text-gray-600 max-w-[90px] truncate" title={`predicted ${l}`}>{l}</th>)}</tr></thead>
+        <tbody>{matrix.map((row, i) => (
+          <tr key={labels[i]}>
+            <th className="pr-2 text-right font-medium text-gray-600 max-w-[90px] truncate" title={`actual ${labels[i]}`}>{labels[i]}</th>
+            {row.map((v, j) => {
+              const share = totals[i] ? v / totals[i] : 0
+              return <td key={labels[j]} className="text-center rounded px-3 py-2 text-gray-900" title={`${v} rows (${Math.round(share * 100)}% of actual “${labels[i]}”)`}
+                style={{ background: i === j ? `rgba(34,197,94,${0.12 + 0.7 * share})` : `rgba(239,68,68,${0.75 * share})` }}>{v}</td>
+            })}
+          </tr>
+        ))}</tbody>
+      </table>
+      <p className="text-[11.5px] text-gray-500 mt-2">Rows: actual value · columns: model’s answer · computed on the held-out test rows.</p>
+    </div>
+  )
+}
+
+export function ActualVsPredicted({ points }: { points: number[][] }) {
+  const W = 360, H = 260, L = 44, R = 12, T = 10, B = 36
+  if (points.length < 2) return null
+  const all = points.flat()
+  const lo = Math.min(...all), hi = Math.max(...all), span = hi - lo || 1
+  const X = (v: number): number => L + ((v - lo) / span) * (W - L - R)
+  const Y = (v: number): number => H - B - ((v - lo) / span) * (H - B - T)
+  const fmt = (v: number): string => (Math.abs(v) >= 1000 ? String(Math.round(v)) : String(Math.round(v * 100) / 100))
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Predicted against actual values on the test rows">
+        <line x1={L} y1={H - B} x2={W - R} y2={H - B} stroke="#9ca3af" /><line x1={L} y1={T} x2={L} y2={H - B} stroke="#9ca3af" />
+        <line x1={X(lo)} y1={Y(lo)} x2={X(hi)} y2={Y(hi)} stroke="#3b82f6" strokeDasharray="4 3" />
+        {points.map((p, i) => <circle key={i} cx={X(p[0])} cy={Y(p[1])} r="2.6" fill="#3b82f6" opacity="0.5" />)}
+        {[0, 1, 2].map(i => { const v = lo + (i / 2) * span; return <g key={i}><text x={X(v)} y={H - B + 14} fontSize="9" fill="#6b7280" textAnchor="middle">{fmt(v)}</text><text x={L - 5} y={Y(v) + 3} fontSize="9" fill="#6b7280" textAnchor="end">{fmt(v)}</text></g> })}
+        <text x={(L + W - R) / 2} y={H - 4} fontSize="10" fill="#6b7280" textAnchor="middle">actual →</text>
+        <text x={10} y={(T + H - B) / 2} fontSize="10" fill="#6b7280" textAnchor="middle" transform={`rotate(-90 10 ${(T + H - B) / 2})`}>predicted ↑</text>
+      </svg>
+      <p className="text-[11.5px] text-gray-500">Dots on the dashed line would be perfect predictions.</p>
+    </div>
+  )
+}

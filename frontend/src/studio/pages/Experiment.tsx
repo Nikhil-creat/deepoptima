@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { api, BASE, download, errText } from '../api'
-import { Bars, ParetoChart, ProgressBar } from '../charts'
+import { api, download, errText, getBase } from '../api'
+import { ActualVsPredicted, Bars, ConfusionMatrix, ParetoChart, ProgressBar } from '../charts'
 import { dateOnly, fmtScore } from '../format'
 import { navigate } from '../router'
+import { buildReport, saveText } from '../report'
 import { finalsOf, ModelsTable, SummaryCards, TrialsTable } from '../results'
 import type { ExperimentDetail, FeatureMeta, Trial } from '../types'
 import { btnCls, card, inputCls, Notice, PageTitle, Spinner, StatusBadge, useAction, useTitle } from '../ui'
@@ -79,6 +80,25 @@ function PredictPanel({ e, modelId }: { e: ExperimentDetail; modelId: number | n
   )
 }
 
+function ApiPanel({ e, modelId }: { e: ExperimentDetail; modelId: number | null }) {
+  const [copied, setCopied] = useState(false)
+  const base = getBase() || window.location.origin
+  const feats = (e.result?.features ?? []).slice(0, 3)
+  const row = Object.fromEntries(feats.map(f => [f.name, f.kind === 'numeric' ? Math.round((f.median ?? 0) * 100) / 100 : (f.values?.[0] ?? 'value')]))
+  const body = JSON.stringify({ trial_id: modelId, rows: [row] }).replace(/'/g, "'\\''")
+  const cmd = `curl -X POST ${base}/api/experiments/${e.id}/predict \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${body}'`
+  return (
+    <div className={card}>
+      <h2 className="text-[15px] font-medium mb-1">Use it from your own app (API)</h2>
+      <p className="text-[12px] text-gray-500 mb-3">Create a key under <a className="text-blue-600 underline" href="#/account">Account → API keys</a>. Keys can only request predictions and read experiments. Send as many columns as you have; missing ones count as unknown.</p>
+      <div className="flex items-start gap-2 rounded-lg bg-gray-900 text-gray-100 px-3 py-2.5 min-w-0">
+        <pre className="flex-1 min-w-0 overflow-x-auto text-[11.5px] leading-relaxed whitespace-pre">{cmd}</pre>
+        <button className="text-[12px] text-gray-300 hover:text-white shrink-0" onClick={() => { void navigator.clipboard.writeText(cmd).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500) }).catch(() => undefined) }}>{copied ? 'Copied' : 'Copy'}</button>
+      </div>
+    </div>
+  )
+}
+
 function SharePanel({ e, onChange }: { e: ExperimentDetail; onChange: () => void }) {
   const { busy, error, run } = useAction()
   const [copied, setCopied] = useState(false)
@@ -141,6 +161,8 @@ export function ExperimentPage({ id }: { id: number }) {
       <p className="text-[12.5px]"><a className="text-blue-600" href="#/app">← Overview</a></p>
       <PageTitle title={e.name} sub={`${e.dataset_name ?? 'Dataset'} → predict “${e.target}” · ${e.task} · ${e.metric.replace('_', ' ')} · ${dateOnly(e.created_at)}`}
         right={<div className="flex items-center gap-2 flex-wrap"><StatusBadge s={e.status} />{active && <button className={btnCls.outline} disabled={busy} onClick={() => { void cancel() }}>Cancel</button>}
+          {e.status === 'done' && <button className={btnCls.outline} onClick={() => saveText(`report-${e.id}.html`, buildReport(e))}>Report</button>}
+          {!active && <a className={btnCls.outline} href={`#/new?clone=${e.id}`}>Run again…</a>}
           {!active && <button className={btnCls.danger} disabled={busy} onClick={() => { void del() }}>Delete</button>}</div>} />
       {error && <Notice kind="error">{error}</Notice>}
       {err && <Notice kind="warn">Connection problem: {err}. Retrying…</Notice>}
@@ -155,6 +177,9 @@ export function ExperimentPage({ id }: { id: number }) {
       {e.status === 'cancelled' && <Notice kind="warn">{e.message}</Notice>}
       {e.status === 'done' && e.message.startsWith('Stopped') && <Notice kind="info">{e.message}</Notice>}
       {(e.result?.notes ?? []).map(n => <Notice key={n} kind="info">{n}</Notice>)}
+      {finals[0] && (finals[0].test_score as number) >= 0.99 && (e.task === 'regression' || (e.result?.baseline_test ?? 0) < 0.9) && (
+        <Notice kind="warn"><b>Suspiciously perfect.</b> A near-perfect score often means a column leaks the answer (an ID, or something only known after the outcome). Check “What mattered most”, then use <a className="underline" href={`#/new?clone=${e.id}`}>Run again</a> to exclude suspicious columns.</Notice>
+      )}
       {e.trials.length > 0 && <SummaryCards trials={e.trials} result={e.result} metric={e.metric} baselineVal={e.baseline_score} />}
       {finals.length > 0 && (
         <div className={card}>
@@ -174,7 +199,17 @@ export function ExperimentPage({ id }: { id: number }) {
             <p className="text-[11.5px] text-gray-500 mt-3">How much the best model's score drops when a column is scrambled. Correlation, not proof of cause.</p></div>
         </div>
       )}
+      {e.result?.diagnostics && (
+        <div className={card}>
+          <h2 className="text-[15px] font-medium mb-3">{e.result.diagnostics.kind === 'confusion' ? 'Where the best model is right and wrong' : 'How far off the predictions are'}</h2>
+          {e.result.diagnostics.kind === 'confusion'
+            ? <ConfusionMatrix labels={e.result.diagnostics.labels} matrix={e.result.diagnostics.matrix} />
+            : <div className="grid gap-4 md:grid-cols-[1fr_1.4fr] items-center"><div><p className="text-[12.5px] text-gray-600">Typical error (MAE): <b>{e.result.diagnostics.mae}</b></p><p className="text-[12.5px] text-gray-600">Large errors weigh more (RMSE): <b>{e.result.diagnostics.rmse}</b></p>
+              <p className="text-[11.5px] text-gray-500 mt-2">Same units as “{e.target}”, measured on test rows.</p></div><ActualVsPredicted points={e.result.diagnostics.scatter} /></div>}
+        </div>
+      )}
       {e.status === 'done' && finals.length > 0 && <PredictPanel e={e} modelId={model} />}
+      {e.status === 'done' && finals.length > 0 && <ApiPanel e={e} modelId={model} />}
       <div className="grid gap-4 lg:grid-cols-2">
         {e.status === 'done' && <SharePanel e={e} onChange={refresh} />}
         {e.trials.length > 0 && <details className={card}><summary className="cursor-pointer text-[15px] font-medium">All {e.trials.length} models tried</summary><div className="mt-3"><TrialsTable trials={e.trials} metric={e.metric} /></div></details>}
@@ -183,4 +218,3 @@ export function ExperimentPage({ id }: { id: number }) {
     </div>
   )
 }
-export { BASE }

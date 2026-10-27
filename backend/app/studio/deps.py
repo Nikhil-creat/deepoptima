@@ -1,9 +1,12 @@
 """Shared request helpers: client IP, rate limiting, current-user dependency, serializers."""
+import re
+from datetime import timezone
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from .db import Dataset, Experiment, Trial, User, get_db, iso
-from .security import Limiter, read_token
+from . import mailer
+from .db import ApiKey, Dataset, Experiment, Trial, User, get_db, iso, utcnow
+from .security import Limiter, hash_key, read_token
 from .settings import settings
 
 limiter = Limiter()
@@ -29,8 +32,22 @@ async def current_user(request: Request, db: AsyncSession = Depends(get_db)) -> 
     auth = request.headers.get("authorization", "")
     if not auth.lower().startswith("bearer "):
         raise HTTPException(401, "Please sign in.")
-    body = read_token(auth[7:].strip(), settings.jwt_secret)
-    if not body:
+    raw = auth[7:].strip()
+    if raw.startswith("dok_"):                                    # personal API key: read experiments + request predictions only
+        path, method = request.url.path, request.method
+        if not ((method == "GET" and re.fullmatch(r"/api/experiments(/\d+)?", path)) or (method == "POST" and re.fullmatch(r"/api/experiments/\d+/predict(-file)?", path))):
+            raise HTTPException(403, "API keys can only read experiments and request predictions.")
+        k = await db.scalar(select(ApiKey).where(ApiKey.key_hash == hash_key(raw)))
+        owner = await db.get(User, k.user_id) if k else None
+        if not k or not owner or not owner.is_active:
+            raise HTTPException(401, "Invalid API key.")
+        last = k.last_used_at.replace(tzinfo=timezone.utc) if (k.last_used_at and k.last_used_at.tzinfo is None) else k.last_used_at
+        if last is None or (utcnow() - last).total_seconds() > 60:
+            k.last_used_at = utcnow()
+            await db.commit()
+        return owner
+    body = read_token(raw, settings.jwt_secret)
+    if not body or body.get("p"):
         raise HTTPException(401, "Your session expired. Please sign in again.")
     u = await db.get(User, int(body.get("sub", 0) or 0))
     if not u or not u.is_active or u.token_version != body.get("tv"):
@@ -45,7 +62,12 @@ async def admin_user(u: User = Depends(current_user)) -> User:
 
 
 def user_out(u: User) -> dict:
-    return {"id": u.id, "email": u.email, "name": u.name, "is_admin": u.is_admin, "created_at": iso(u.created_at)}
+    return {"id": u.id, "email": u.email, "name": u.name, "is_admin": u.is_admin, "email_verified": u.email_verified, "created_at": iso(u.created_at)}
+
+
+def require_verified(u: User) -> None:
+    if settings.require_verification and mailer.enabled() and not u.email_verified:
+        raise HTTPException(403, "Please confirm your email address first. Check your inbox for the verification link.")
 
 
 def limits_out() -> dict:
@@ -71,7 +93,7 @@ def experiment_out(e: Experiment, dataset_name: str | None = None) -> dict:
 def trial_out(t: Trial) -> dict:
     return {"id": t.id, "gen": t.gen, "family": t.family, "label": t.label, "params": t.params, "status": t.status, "error": t.error,
             "score": t.score, "test_score": t.test_score, "latency_ms": t.latency_ms, "size_kb": t.size_kb, "fit_seconds": t.fit_seconds,
-            "pareto_rank": t.pareto_rank, "is_final": t.is_final, "blob_kb": t.blob_kb}
+            "pareto_rank": t.pareto_rank, "is_final": t.is_final, "blob_kb": t.blob_kb, "ci_low": t.ci_low, "ci_high": t.ci_high}
 
 
 async def owned_experiment(db: AsyncSession, eid: int, user: User) -> Experiment:

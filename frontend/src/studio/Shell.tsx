@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Logo } from '../Logo'
 import { api, errText } from './api'
 import { useAuth } from './auth'
+import { useServerConfig } from './config'
 import { navigate } from './router'
 import type { Route } from './router'
 import { btnCls, inputCls, Notice, useAction } from './ui'
@@ -72,6 +73,9 @@ const NAV: { path: string; label: string; name: Route['name'][] }[] = [
 export function Shell({ route, children }: { route: Route; children: ReactNode }) {
   const { user, signOut } = useAuth()
   const [dark, toggleDark] = useDarkMode()
+  const cfg = useServerConfig()
+  const { busy: resending, run: runResend } = useAction()
+  const [resent, setResent] = useState(false)
   const [server, setServer] = useState<'checking' | 'slow' | 'up' | 'down'>('checking')
   useEffect(() => {
     let live = true
@@ -114,7 +118,11 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
       </header>
       <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 pt-6">
         {server === 'slow' && <Notice kind="info">Waking up the server… this can take up to a minute on the free plan.</Notice>}
-        {server === 'down' && <Notice kind="warn">The Studio server is not reachable right now. Please try again in a minute. (Site owner: check that <code>VITE_API_URL</code> points to your running backend.)</Notice>}
+        {server === 'down' && <Notice kind="warn">The Studio server is not reachable right now. Please try again in a minute. (Site owner: set <code>apiUrl</code> in <code>frontend/public/config.json</code> to your running backend, then redeploy.)</Notice>}
+        {user && cfg?.email_enabled && !user.email_verified && (
+          <Notice kind="warn">Please confirm your email address{cfg.require_verification ? ' to upload data and run experiments' : ''}. {resent ? 'A new link is on its way.' : (
+            <button className="underline font-medium" disabled={resending} onClick={() => { void runResend(() => api('/api/me/resend-verification', { method: 'POST' })).then(r => { if (r !== undefined) setResent(true) }) }}>Resend the email</button>)}</Notice>
+        )}
         {children}
       </main>
       <Footer />

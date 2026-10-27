@@ -1,4 +1,8 @@
 # Changelog
+## v9.0
+- Engine: 3-fold scoring for small datasets, 95% bootstrap ranges on test scores, class-balancing option, confusion matrix / error scatter, column exclusion, leakage warning.
+- Accounts: email verification + password reset (Brevo/Resend over HTTPS), personal API keys (prediction-only), full data export, admin user management, automatic DB column upgrades.
+- App: runtime `config.json` (no env var needed to point the site at the backend), clone experiment, dataset download, downloadable HTML report, API usage panel.
 ## v8.0: DeepOptima Studio (real product)
 - New full-stack public app: accounts, datasets, experiments, results, predictions, share links, admin, privacy/terms/help pages (React + FastAPI + scikit-learn engine, SQLite/Postgres).
 - Engine: CSV profiling, NSGA-II search over six model families (score vs latency vs size), held-out test scoring, baseline, importance, joblib models, generated predict.py.

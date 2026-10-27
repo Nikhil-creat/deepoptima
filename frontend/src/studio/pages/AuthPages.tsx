@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import { useServerConfig } from '../config'
 import { navigate } from '../router'
 import type { User } from '../types'
 import { btnCls, card, Field, inputCls, Notice, useAction, useTitle } from '../ui'
@@ -28,6 +29,7 @@ function Frame({ title, sub, children }: { title: string; sub: string; children:
 export function Login() {
   useTitle('Sign in')
   const { signIn } = useAuth()
+  const cfg = useServerConfig()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const { busy, error, run } = useAction()
@@ -43,7 +45,9 @@ export function Login() {
         <Field label="Email"><input className={inputCls} type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></Field>
         <Field label="Password"><input className={inputCls} type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
         <button className={`${btnCls.primary} w-full`} type="submit" disabled={busy || !email || !password}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <p className="text-[12px] text-gray-500 mt-3">Forgot your password? Automatic email reset is not available yet; <a className="text-blue-600 underline" href={`mailto:${SUPPORT_EMAIL}?subject=Password%20reset%20for%20DeepOptima%20Studio`}>email the site owner</a> from your account address.</p>
+        <p className="text-[12px] text-gray-500 mt-3">{cfg?.email_enabled
+          ? <>Forgot your password? <a className="text-blue-600 underline" href="#/forgot">Reset it by email</a></>
+          : <>Forgot your password? <a className="text-blue-600 underline" href={`mailto:${SUPPORT_EMAIL}?subject=Password%20reset%20for%20DeepOptima%20Studio`}>Email the site owner</a> from your account address.</>}</p>
       </form>
       <p className="text-[13px] text-gray-600 mt-5 text-center">New here? <a className="text-blue-600 font-medium" href="#/register">Create a free account</a></p>
     </Frame>
@@ -87,6 +91,81 @@ export function Register() {
         <button className={`${btnCls.primary} w-full mt-3`} type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
       </form>
       <p className="text-[13px] text-gray-600 mt-5 text-center">Already registered? <a className="text-blue-600 font-medium" href="#/login">Sign in</a></p>
+    </Frame>
+  )
+}
+
+
+export function Forgot() {
+  useTitle('Reset password')
+  const cfg = useServerConfig()
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const { busy, error, run } = useAction()
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    const r = await run(() => api('/api/auth/forgot', { body: { email }, auth: false }))
+    if (r !== undefined) setSent(true)
+  }
+  return (
+    <Frame title="Reset your password" sub="We will email you a link that works for one hour.">
+      {cfg && !cfg.email_enabled && <Notice kind="warn">Email sending is not set up on this server yet. Please <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>contact the site owner</a>.</Notice>}
+      {sent ? <Notice kind="success">If an account exists for that address, a reset link is on its way. Check your inbox (and spam folder).</Notice> : (
+        <form onSubmit={e => { void submit(e) }} noValidate>
+          {error && <Notice kind="error">{error}</Notice>}
+          <Field label="Your account email"><input className={inputCls} type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></Field>
+          <button className={`${btnCls.primary} w-full`} type="submit" disabled={busy || !email}>{busy ? 'Sending…' : 'Send reset link'}</button>
+        </form>
+      )}
+      <p className="text-[13px] text-gray-600 mt-5 text-center"><a className="text-blue-600 font-medium" href="#/login">Back to sign in</a></p>
+    </Frame>
+  )
+}
+
+export function Reset({ token }: { token: string }) {
+  useTitle('Choose a new password')
+  const { signIn } = useAuth()
+  const [pw, setPw] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const { busy, error, setError, run } = useAction()
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (pw.length < 10) { setError('Use at least 10 characters.'); return }
+    if (pw !== confirm) { setError('Passwords do not match.'); return }
+    const r = await run(() => api<{ token: string; user: User }>('/api/auth/reset', { body: { token, new_password: pw }, auth: false }))
+    if (r) { signIn(r.token, r.user); navigate('/app') }
+  }
+  return (
+    <Frame title="Choose a new password" sub="Pick something at least 10 characters long.">
+      {!token && <Notice kind="error">This link is incomplete. Open the full link from your email.</Notice>}
+      <form onSubmit={e => { void submit(e) }} noValidate>
+        {error && <Notice kind="error">{error} {error.includes('expired') && <a className="underline" href="#/forgot">Request a new link</a>}</Notice>}
+        <Field label="New password"><input className={inputCls} type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></Field>
+        <Field label="Confirm new password"><input className={inputCls} type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} /></Field>
+        <button className={`${btnCls.primary} w-full`} type="submit" disabled={busy || !token || !pw}>{busy ? 'Saving…' : 'Save password and sign in'}</button>
+      </form>
+    </Frame>
+  )
+}
+
+export function Verify({ token }: { token: string }) {
+  useTitle('Confirm email')
+  const { user, setUser } = useAuth()
+  const [state, setState] = useState<'working' | 'ok' | 'bad'>('working')
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    let live = true
+    api('/api/auth/verify', { body: { token }, auth: false })
+      .then(() => { if (live) { setState('ok'); if (user) setUser({ ...user, email_verified: true }) } })
+      .catch(e => { if (live) { setState('bad'); setMsg(e instanceof Error ? e.message : 'Could not confirm.') } })
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+  return (
+    <Frame title="Confirm your email" sub="One quick check.">
+      {state === 'working' && <Notice kind="info">Confirming…</Notice>}
+      {state === 'ok' && <><Notice kind="success">Your email address is confirmed. Thank you!</Notice><a className={`${btnCls.primary} w-full`} href="#/app">Continue to Studio</a></>}
+      {state === 'bad' && <><Notice kind="error">{msg}</Notice><a className={`${btnCls.outline} w-full`} href="#/app">Go to Studio and request a new link</a></>}
     </Frame>
   )
 }

@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, errText } from '../api'
 import { FAMILIES, METRICS } from '../format'
 import { navigate } from '../router'
-import type { Dataset, Experiment, Limits, Task } from '../types'
+import type { Dataset, Experiment, ExperimentDetail, Limits, Task } from '../types'
 import { btnCls, card, Field, inputCls, Notice, PageTitle, Spinner, useAction, useTitle } from '../ui'
 
-export function NewExperiment({ preset }: { preset?: number }) {
+export function NewExperiment({ preset, clone }: { preset?: number; clone?: number }) {
   useTitle('New experiment')
   const [sets, setSets] = useState<Dataset[] | null>(null)
   const [limits, setLimits] = useState<Limits | null>(null)
@@ -15,6 +15,9 @@ export function NewExperiment({ preset }: { preset?: number }) {
   const [err, setErr] = useState('')
   const [f, setF] = useState({ name: '', target: '', task: 'auto' as 'auto' | Task, metric: '', generations: 4, population: 8, time_limit_s: 90, test_size: 0.2, seed: 42 })
   const [fams, setFams] = useState<string[]>(Object.keys(FAMILIES))
+  const [excl, setExcl] = useState<string[]>([])
+  const [cloneExp, setCloneExp] = useState<ExperimentDetail | null>(null)
+  const applied = useRef<number | null>(null)
   const { busy, error, run } = useAction()
 
   useEffect(() => {
@@ -23,8 +26,20 @@ export function NewExperiment({ preset }: { preset?: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
+    if (!clone) return
+    api<ExperimentDetail>(`/api/experiments/${clone}`).then(x => { setCloneExp(x); setDsId(x.dataset_id) }).catch(e => setErr(errText(e)))
+  }, [clone])
+  useEffect(() => {
+    if (!ds || !cloneExp || applied.current === cloneExp.id || ds.id !== cloneExp.dataset_id) return
+    applied.current = cloneExp.id
+    const c = cloneExp.config
+    setF(p => ({ ...p, name: `${cloneExp.name} (copy)`.slice(0, 80), target: cloneExp.target, task: cloneExp.task, metric: cloneExp.metric, generations: c.generations,
+      population: c.population, time_limit_s: c.time_limit_s, test_size: c.test_size, seed: c.seed }))
+    setFams(c.families); setExcl(c.exclude ?? [])
+  }, [ds, cloneExp])
+  useEffect(() => {
     if (!dsId) return
-    setDs(null)
+    setDs(null); setExcl([])
     api<Dataset>(`/api/datasets/${dsId}`).then(d => {
       setDs(d)
       const first = d.profile?.targets.slice().reverse().find(t => t.usable)
@@ -57,10 +72,12 @@ export function NewExperiment({ preset }: { preset?: number }) {
     e.preventDefault()
     if (!ds) return
     const r = await run(() => api<Experiment>('/api/experiments', { body: { dataset_id: ds.id, name: f.name.trim(), target: f.target, task: f.task, metric: metricValue,
-      families: fams, generations: f.generations, population: f.population, time_limit_s: timeLimit, test_size: f.test_size, seed: f.seed } }))
+      families: fams, generations: f.generations, population: f.population, time_limit_s: timeLimit, test_size: f.test_size, seed: f.seed, exclude: excl } }))
     if (r) navigate(`/experiments/${r.id}`)
   }
-  const canSubmit = !!ds && f.name.trim().length > 0 && !!f.target && fams.length > 0 && !!tInfo?.usable && !busy
+  const featureCols = (ds?.profile?.columns ?? []).filter(c => c.kind !== 'ignored' && c.name !== f.target)
+  const keptCols = featureCols.filter(c => !excl.includes(c.name))
+  const canSubmit = !!ds && f.name.trim().length > 0 && !!f.target && fams.length > 0 && !!tInfo?.usable && keptCols.length > 0 && !busy
   const slider = (label: string, key: 'generations' | 'population' | 'time_limit_s', min: number, max: number, step: number, unit = '') => (
     <Field label={`${label}: ${f[key]}${unit}`}><input type="range" className="w-full" min={min} max={max} step={step} value={f[key]} onChange={e => setF({ ...f, [key]: Number(e.target.value) })} /></Field>
   )
@@ -85,6 +102,17 @@ export function NewExperiment({ preset }: { preset?: number }) {
               <Field label="How to score models"><select className={inputCls} value={metricValue} onChange={e => setF({ ...f, metric: e.target.value })}>{Object.entries(metrics).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             </div>
           </div>
+          <details className={card}>
+            <summary className="cursor-pointer text-[15px] font-medium">Columns to use ({keptCols.length} of {featureCols.length})</summary>
+            <p className="text-[12px] text-gray-500 my-3">Untick columns that should not influence the prediction: IDs, names, or anything you would not know at prediction time (that causes “leakage” and unrealistically good scores).</p>
+            <div className="grid sm:grid-cols-2 gap-1.5">
+              {featureCols.map(c => (
+                <label key={c.name} className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-[12.5px] cursor-pointer"><input type="checkbox" checked={!excl.includes(c.name)} onChange={() => setExcl(cur => (cur.includes(c.name) ? cur.filter(x => x !== c.name) : [...cur, c.name]))} />
+                  <span className="truncate" title={c.name}>{c.name}</span><span className="ml-auto text-[11px] text-gray-400">{c.kind === 'numeric' ? 'number' : 'category'}</span></label>
+              ))}
+            </div>
+            {keptCols.length === 0 && <p className="text-[12px] text-red-600 mt-2">Keep at least one column.</p>}
+          </details>
           <div className={card}>
             <h2 className="text-[15px] font-medium mb-1">2 · Which kinds of models?</h2>
             <p className="text-[12px] text-gray-500 mb-3">More families means a better search but a longer run. Linear and trees are tiny and fast; boosting is often most accurate.</p>

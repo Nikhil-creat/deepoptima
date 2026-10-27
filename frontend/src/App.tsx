@@ -6,7 +6,7 @@ import { navigate, PROTECTED, useRoute } from './studio/router'
 import { Shell } from './studio/Shell'
 import { Account } from './studio/pages/Account'
 import { Admin } from './studio/pages/Admin'
-import { Login, Register } from './studio/pages/AuthPages'
+import { Forgot, Login, Register, Reset, Verify } from './studio/pages/AuthPages'
 import { Dashboard } from './studio/pages/Dashboard'
 import { DatasetDetail, Datasets } from './studio/pages/Datasets'
 import { ExperimentPage } from './studio/pages/Experiment'
@@ -26,7 +26,7 @@ function Router() {
     if (needsAuth && !user) {
       try { sessionStorage.setItem('dopt_next', window.location.hash.slice(1)) } catch { /* ignore */ }
       navigate('/login')
-    } else if ((route.name === 'login' || route.name === 'register') && user) navigate('/app')
+    } else if ((route.name === 'login' || route.name === 'register' || route.name === 'forgot') && user) navigate('/app')
   }, [ready, needsAuth, user, route])
 
   if (route.name === 'landing') return <Landing />
@@ -38,7 +38,10 @@ function Router() {
     case 'app': page = <Dashboard />; break
     case 'datasets': page = <Datasets />; break
     case 'dataset': page = <DatasetDetail id={route.id} />; break
-    case 'new': page = <NewExperiment preset={route.dataset} />; break
+    case 'new': page = <NewExperiment preset={route.dataset} clone={route.clone} />; break
+    case 'forgot': page = <Forgot />; break
+    case 'reset': page = <Reset token={route.token} />; break
+    case 'verify': page = <Verify token={route.token} />; break
     case 'experiment': page = <ExperimentPage id={route.id} />; break
     case 'account': page = <Account />; break
     case 'admin': page = user?.is_admin ? <Admin /> : <p className="text-[13px] text-gray-600">Admins only.</p>; break

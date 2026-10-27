@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { api, errText } from '../api'
+import { api, download, errText } from '../api'
 import { useAuth } from '../auth'
 import { dateOnly } from '../format'
 import { navigate } from '../router'
@@ -99,7 +99,7 @@ export function DatasetDetail({ id }: { id: number }) {
     <div>
       <p className="text-[12.5px] mb-2"><a className="text-blue-600" href="#/datasets">← Datasets</a></p>
       <PageTitle title={d.name} sub={`${p.n_rows.toLocaleString()} rows · ${p.n_cols} columns · uploaded ${dateOnly(d.created_at)}`}
-        right={<div className="flex gap-2"><a className={btnCls.primary} href={`#/new?dataset=${d.id}`}>Create experiment</a><button className={btnCls.danger} disabled={busy} onClick={() => { void del() }}>Delete</button></div>} />
+        right={<div className="flex flex-wrap gap-2"><a className={btnCls.primary} href={`#/new?dataset=${d.id}`}>Create experiment</a><button className={btnCls.outline} disabled={busy} onClick={() => { void run(() => download(`/api/datasets/${id}/download`, `${d.name}.csv`)) }}>Download CSV</button><button className={btnCls.danger} disabled={busy} onClick={() => { void del() }}>Delete</button></div>} />
       {error && <Notice kind="error">{error}</Notice>}
       {p.warnings.length > 0 && <Notice kind="warn"><b>Heads up:</b><ul className="list-disc ml-5 mt-1">{p.warnings.map(w => <li key={w}>{w}</li>)}</ul></Notice>}
       <div className={`${card} overflow-x-auto mb-4`}>

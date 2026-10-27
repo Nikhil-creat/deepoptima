@@ -21,3 +21,8 @@
 ## 5. Later / optional
 - [ ] Email verification + password reset (needs an email service such as Resend or Brevo; ask me and I will add it).
 - [ ] Colab GPU benchmark for the research platform (`notebooks/deepoptima_colab.ipynb`).
+
+## Added in v9 (optional)
+- [ ] Email (verification + password reset): follow *Email* in docs/STUDIO_DEPLOY.md (Brevo free key, 5 minutes).
+- [ ] Vercel landing: put your Render URL in `frontend/public/config.json` (no Vercel setting needed).
+- [ ] Try the extras once yourself: exclude a column, *Run again*, create an API key and run the curl command, download the report, deactivate a test user in `/#/admin`.

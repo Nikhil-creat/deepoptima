@@ -52,7 +52,8 @@ async def _run(exp_id: int) -> None:
                 if not ds:
                     raise P.DataError("The dataset for this experiment was deleted.")
                 df = await asyncio.to_thread(P.from_gz, ds.data_gz, ds.profile)
-                feats = [c for c in ds.profile["columns"] if c["name"] != exp.target and c["kind"] != "ignored"]
+                skip = set(exp.config.get("exclude", []))
+                feats = [c for c in ds.profile["columns"] if c["name"] != exp.target and c["kind"] != "ignored" and c["name"] not in skip]
                 cfg = {**exp.config, "task": exp.task, "metric": exp.metric}
                 it = S.search_iter(df, exp.target, feats, cfg, cancel=lambda: exp_id in _cancel)
                 end, tried, stopped = object(), 0, ""
@@ -63,7 +64,7 @@ async def _run(exp_id: int) -> None:
                     t = ev["type"]
                     if t == "info":
                         exp.baseline_score = ev["baseline_val"]
-                        exp.result = {k: ev[k] for k in ("n_train", "n_val", "n_test", "n_features", "notes", "classes")}
+                        exp.result = {k: ev[k] for k in ("n_train", "n_val", "n_test", "n_features", "notes", "classes", "cv")}
                         exp.message = "Trying models…"
                     elif t == "trial":
                         tried += 1
@@ -90,12 +91,13 @@ async def _run(exp_id: int) -> None:
                             if r is None:
                                 continue
                             r.test_score, r.is_final = m["test_score"], m["blob"] is not None
+                            r.ci_low, r.ci_high = m.get("ci_low"), m.get("ci_high")
                             r.model_blob, r.blob_kb = m["blob"], (len(m["blob"]) / 1024 if m["blob"] else None)
                             if m["key"] == ev["best_key"]:
                                 best_id = r.id
                         exp.result = {**(exp.result or {}), "importance": ev["importance"], "features": ev["features"],
                                       "sklearn_version": ev["sklearn_version"], "baseline_test": ev["baseline_test"],
-                                      "best_trial_id": best_id, "stopped": stopped}
+                                      "best_trial_id": best_id, "stopped": stopped, "diagnostics": ev.get("diagnostics")}
                     await db.commit()
                 if exp_id in _cancel:
                     await _set(db, exp, status="cancelled", message="Cancelled. Models tried so far are listed below.", finished_at=utcnow())

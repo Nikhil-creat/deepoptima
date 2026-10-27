@@ -1,4 +1,4 @@
-import asyncio, io, json, secrets
+import asyncio, gzip, io, json, re, secrets
 from collections import OrderedDict
 from typing import Any, Literal
 import joblib, numpy as np, pandas as pd
@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from . import runner
 from .db import Dataset, Experiment, Trial, User, get_db
-from .deps import check_rate, count, current_user, dataset_out, experiment_out, owned_experiment, trial_out
+from .deps import check_rate, count, current_user, dataset_out, experiment_out, owned_experiment, require_verified, trial_out
 from .engine import codegen, profile as P, search as S, space
 from .settings import settings
 
@@ -29,6 +29,7 @@ async def owned_dataset(db: AsyncSession, did: int, u: User) -> Dataset:
 async def upload_dataset(request: Request, file: UploadFile = File(...), name: str = Form(""),
                          u: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     check_rate(request, "upload", 20, 3600, u.id)
+    require_verified(u)
     if await count(db, Dataset, Dataset.owner_id == u.id) >= settings.max_datasets:
         raise HTTPException(400, f"You can keep up to {settings.max_datasets} datasets. Delete one first.")
     fname = (file.filename or "").strip()
@@ -65,6 +66,14 @@ async def get_dataset(did: int, u: User = Depends(current_user), db: AsyncSessio
     return {**dataset_out(d, True), "preview": await asyncio.to_thread(P.preview, df)}
 
 
+@router.get("/datasets/{did}/download")
+async def download_dataset(did: int, u: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    d = await owned_dataset(db, did, u)
+    data = await asyncio.to_thread(gzip.decompress, d.data_gz)
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", d.name).strip("._")[:60] or "dataset"
+    return Response(data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{safe}.csv"'})
+
+
 @router.delete("/datasets/{did}")
 async def delete_dataset(did: int, u: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     d = await owned_dataset(db, did, u)
@@ -93,6 +102,7 @@ class ExperimentIn(BaseModel):
     time_limit_s: int = Field(90, ge=20, le=900)
     test_size: float = Field(0.2, ge=0.1, le=0.3)
     seed: int = Field(42, ge=0, le=9999)
+    exclude: list[str] = Field(default_factory=list, max_length=100)     # feature columns the user does not want to use
 
 
 @router.get("/options")
@@ -103,6 +113,7 @@ async def options():
 @router.post("/experiments", status_code=201)
 async def create_experiment(b: ExperimentIn, request: Request, u: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     check_rate(request, "exp", 10, 3600, u.id)
+    require_verified(u)
     ds = await owned_dataset(db, b.dataset_id, u)
     tgt = next((t for t in ds.profile["targets"] if t["name"] == b.target), None)
     if not tgt:
@@ -122,7 +133,11 @@ async def create_experiment(b: ExperimentIn, request: Request, u: User = Depends
         raise HTTPException(400, f"You can keep up to {settings.max_experiments} experiments. Delete old ones first.")
     if await count(db, Experiment, Experiment.owner_id == u.id, Experiment.status.in_(ACTIVE)):
         raise HTTPException(409, "You already have an experiment in progress. Wait for it to finish or cancel it.")
-    cfg = {"families": fams, "generations": b.generations, "population": b.population, "test_size": b.test_size, "seed": b.seed,
+    cols = {c["name"]: c for c in ds.profile["columns"]}
+    excl = [x for x in dict.fromkeys(b.exclude) if x in cols and x != b.target]
+    if not [n for n, c in cols.items() if n != b.target and c["kind"] != "ignored" and n not in excl]:
+        raise HTTPException(400, "At least one feature column must stay selected.")
+    cfg = {"exclude": excl, "families": fams, "generations": b.generations, "population": b.population, "test_size": b.test_size, "seed": b.seed,
            "time_limit_s": min(b.time_limit_s, settings.max_time_limit)}
     e = Experiment(owner_id=u.id, dataset_id=ds.id, name=b.name.strip()[:80], target=b.target, task=task, metric=metric, config=cfg,
                    status="queued", total_generations=b.generations, message="Queued…")

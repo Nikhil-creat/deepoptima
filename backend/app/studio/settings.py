@@ -61,6 +61,13 @@ class Settings:
         self.retention_days = _int("RETENTION_DAYS", 0)      # 0 = keep until the user deletes
         self.static_dir = os.getenv("STATIC_DIR", "")
         self.disable_rate_limits = _bool("DISABLE_RATE_LIMITS", False)   # tests only
+        # transactional email (verification + password reset). Providers: brevo | resend | console (logs the email, dev only)
+        self.email_provider = os.getenv("EMAIL_PROVIDER", "").strip().lower()
+        self.email_api_key = os.getenv("EMAIL_API_KEY", "").strip()
+        self.email_from = os.getenv("EMAIL_FROM", "").strip()
+        self.email_from_name = os.getenv("EMAIL_FROM_NAME", "DeepOptima Studio").strip()
+        self.public_url = os.getenv("PUBLIC_URL", "").strip()                  # base URL used in email links, e.g. https://deepoptima.onrender.com
+        self.require_verification = _bool("REQUIRE_EMAIL_VERIFICATION", False)
 
     @property
     def is_sqlite(self) -> bool:

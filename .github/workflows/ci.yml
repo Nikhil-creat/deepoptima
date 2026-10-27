@@ -9,6 +9,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm install
+      - run: npm run typecheck
       - run: npm run build
       - run: npm audit --audit-level=high || true
   backend:

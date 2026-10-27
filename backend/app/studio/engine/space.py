@@ -25,10 +25,11 @@ WIDTHS = [8, 16, 32, 64, 128]
 
 def _samplers(rng: random.Random) -> dict:
     return {
-        "linear": {"reg_log10": lambda: round(rng.uniform(-3, 2), 2)},
-        "tree": {"max_depth": lambda: rng.randint(2, 20), "min_samples_leaf": lambda: rng.randint(1, 30)},
+        "linear": {"reg_log10": lambda: round(rng.uniform(-3, 2), 2), "balanced": lambda: rng.random() < 0.5},
+        "tree": {"max_depth": lambda: rng.randint(2, 20), "min_samples_leaf": lambda: rng.randint(1, 30), "balanced": lambda: rng.random() < 0.5},
         "rf": {"n_estimators": lambda: rng.choice([20, 40, 60, 100, 150]), "max_depth": lambda: rng.randint(3, 20),
-               "min_samples_leaf": lambda: rng.randint(1, 10), "max_features": lambda: rng.choice(["sqrt", 0.5, 1.0])},
+               "min_samples_leaf": lambda: rng.randint(1, 10), "max_features": lambda: rng.choice(["sqrt", 0.5, 1.0]),
+               "balanced": lambda: rng.random() < 0.5},
         "hgb": {"max_iter": lambda: rng.choice([30, 60, 100, 150, 200]), "learning_rate": lambda: round(10 ** rng.uniform(-1.7, -0.5), 4),
                 "max_depth": lambda: rng.randint(2, 8), "l2": lambda: rng.choice([0.0, 0.01, 0.1, 1.0])},
         "mlp": {"hidden": lambda: [rng.choice(WIDTHS) for _ in range(rng.randint(1, 3))], "activation": lambda: rng.choice(["relu", "tanh"]),
@@ -71,14 +72,17 @@ def crossover(a: dict, b: dict, rng: random.Random) -> dict:
 def make_estimator(g: dict, task: str, seed: int, n_train: int):
     f, p, clf = g["family"], g["params"], task == "classification"
     if f == "linear":
-        return LogisticRegression(C=10 ** (-p["reg_log10"]), max_iter=300) if clf else Ridge(alpha=10 ** p["reg_log10"])
+        cw = "balanced" if (clf and p.get("balanced")) else None            # helps imbalanced classes
+        return LogisticRegression(C=10 ** (-p["reg_log10"]), max_iter=300, class_weight=cw) if clf else Ridge(alpha=10 ** p["reg_log10"])
     if f == "tree":
         c = DecisionTreeClassifier if clf else DecisionTreeRegressor
-        return c(max_depth=p["max_depth"], min_samples_leaf=p["min_samples_leaf"], random_state=seed)
+        kw = {"class_weight": "balanced"} if (clf and p.get("balanced")) else {}
+        return c(max_depth=p["max_depth"], min_samples_leaf=p["min_samples_leaf"], random_state=seed, **kw)
     if f == "rf":
         c = RandomForestClassifier if clf else RandomForestRegressor
+        kw = {"class_weight": "balanced"} if (clf and p.get("balanced")) else {}
         return c(n_estimators=p["n_estimators"], max_depth=p["max_depth"], min_samples_leaf=p["min_samples_leaf"],
-                 max_features=p["max_features"], n_jobs=1, random_state=seed)
+                 max_features=p["max_features"], n_jobs=1, random_state=seed, **kw)
     if f == "hgb":
         c = HistGradientBoostingClassifier if clf else HistGradientBoostingRegressor
         return c(max_iter=p["max_iter"], learning_rate=p["learning_rate"], max_depth=p["max_depth"],
@@ -116,8 +120,9 @@ def describe(g: dict) -> str:
     p = g["params"]
     f = g["family"]
     if f == "mlp": return f"MLP {'-'.join(map(str, p['hidden']))} · {p['activation']}"
-    if f == "rf": return f"Random forest · {p['n_estimators']} trees · depth {p['max_depth']}"
+    bal = " · balanced" if p.get("balanced") else ""
+    if f == "rf": return f"Random forest · {p['n_estimators']} trees · depth {p['max_depth']}{bal}"
     if f == "hgb": return f"Boosting · {p['max_iter']} iters · depth {p['max_depth']} · lr {p['learning_rate']}"
-    if f == "tree": return f"Tree · depth {p['max_depth']}"
+    if f == "tree": return f"Tree · depth {p['max_depth']}{bal}"
     if f == "knn": return f"kNN · k={p['k']}"
-    return f"Linear · reg 10^{p['reg_log10']}"
+    return f"Linear · reg 10^{p['reg_log10']}{bal}"

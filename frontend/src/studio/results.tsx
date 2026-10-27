@@ -40,7 +40,7 @@ export function ModelsTable({ trials, metric, task, selected, onSelect, action }
           <tr key={t.id} className={`border-t border-gray-300 align-top ${selected === t.id ? 'bg-white/60' : ''}`}>
             <td className="py-2 pr-3 min-w-[190px]"><p className="font-medium text-gray-900">{t.label}</p>
               <div className="flex flex-wrap gap-1 mt-1">{i === 0 && <Chip tone="blue">Most accurate</Chip>}{t.id === fastest.id && <Chip tone="green">Fastest</Chip>}{t.id === smallest.id && <Chip tone="amber">Smallest</Chip>}</div></td>
-            <td className="py-2 pr-3 font-medium whitespace-nowrap">{fmtScore(metric, t.test_score)}</td>
+            <td className="py-2 pr-3 font-medium whitespace-nowrap">{fmtScore(metric, t.test_score)}{t.ci_low != null && t.ci_high != null && <span className="block text-[10.5px] font-normal text-gray-500">95% range {fmtScore(metric, t.ci_low)} – {fmtScore(metric, t.ci_high)}</span>}</td>
             <td className="py-2 pr-3 text-gray-600 whitespace-nowrap">{fmtScore(metric, t.score)}</td>
             <td className="py-2 pr-3 whitespace-nowrap">{fmtMs(t.latency_ms)}</td>
             <td className="py-2 pr-3 whitespace-nowrap">{fmtKb(t.blob_kb ?? t.size_kb)}</td>

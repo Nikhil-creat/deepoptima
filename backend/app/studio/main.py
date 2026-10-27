@@ -10,6 +10,7 @@ from . import VERSION, runner
 from .db import init_db
 from .routes_auth import router as auth_router
 from .routes_data import router as data_router
+from .routes_keys import router as keys_router
 from .routes_misc import router as misc_router
 from .settings import settings
 
@@ -65,7 +66,7 @@ async def unhandled(request: Request, exc: Exception):
     return JSONResponse({"detail": "Unexpected server error. Please try again."}, status_code=500)
 
 
-for r in (auth_router, data_router, misc_router):
+for r in (auth_router, data_router, keys_router, misc_router):
     app.include_router(r)
 
 if settings.static_dir and os.path.isdir(settings.static_dir):

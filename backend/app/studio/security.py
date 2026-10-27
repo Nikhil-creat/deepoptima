@@ -1,5 +1,5 @@
 """Password hashing (scrypt), HS256 tokens, validation helpers, rate limiter. Standard library only."""
-import base64, hashlib, hmac, json, os, re, time
+import base64, hashlib, hmac, json, os, re, secrets, time
 from collections import defaultdict, deque
 
 COMMON = {"password", "password1", "1234567890", "qwertyuiop", "iloveyou12", "letmein123", "admin12345", "welcome123"}
@@ -32,9 +32,9 @@ def verify_password(pw: str, stored: str) -> bool:
 DUMMY_HASH = hash_password("dummy-password-for-timing")   # verify against this when the user does not exist
 
 
-def make_token(payload: dict, secret: str, hours: int) -> str:
+def make_token(payload: dict, secret: str, hours: int = 0, ttl_s: int | None = None) -> str:
     now = int(time.time())
-    body = {**payload, "iat": now, "exp": now + hours * 3600}
+    body = {**payload, "iat": now, "exp": now + (ttl_s if ttl_s is not None else hours * 3600)}
     head = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
     data = _b64(json.dumps(body, separators=(",", ":")).encode())
     sig = _b64(hmac.new(secret.encode(), f"{head}.{data}".encode(), hashlib.sha256).digest())
@@ -53,6 +53,28 @@ def read_token(token: str, secret: str) -> dict | None:
         return body if int(body.get("exp", 0)) > time.time() else None
     except Exception:
         return None
+
+
+def fingerprint(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()[:16]
+
+
+def purpose_token(purpose: str, uid: int, secret: str, ttl_s: int, **extra) -> str:
+    return make_token({"p": purpose, "sub": str(uid), **extra}, secret, ttl_s=ttl_s)
+
+
+def read_purpose(token: str, purpose: str, secret: str) -> dict | None:
+    body = read_token(token, secret)
+    return body if body and body.get("p") == purpose else None
+
+
+def hash_key(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def new_api_key() -> tuple[str, str, str]:
+    key = "dok_" + secrets.token_urlsafe(24)
+    return key, key[:8], hash_key(key)
 
 
 def password_problem(pw: str) -> str | None:
